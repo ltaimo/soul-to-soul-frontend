@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { ShieldCheck } from 'lucide-react';
+import logo from '../assets/logo.png';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
@@ -41,8 +42,7 @@ export const Login = () => {
     <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-bg)' }}>
       <div className="card" style={{ width: '400px', padding: '3rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <img src="/logo.png" alt="Soul to Soul Logo" style={{ width: 64, height: 64, borderRadius: '8px', objectFit: 'cover', marginBottom: '1rem' }} />
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: 'var(--color-primary)' }}>Soul to Soul ERP</h1>
+          <img src={logo} alt="Soul to Soul" style={{ height: '120px', marginBottom: '20px' }} />
           <p style={{ color: 'var(--color-charcoal-light)', fontSize: '0.875rem', marginTop: '0.25rem' }}>Secure Administrator Login</p>
         </div>
 
@@ -80,6 +80,9 @@ export const Login = () => {
             {loading ? 'Authenticating...' : <><ShieldCheck size={18} /> Authenticate</>}
           </button>
         </form>
+        <div style={{ marginTop: '2rem', fontSize: '12px', color: 'rgba(0,0,0,0.5)', textAlign: 'center' }}>
+          System by Layton Taimo. All rights reserved.
+        </div>
       </div>
     </div>
   );
