@@ -1,16 +1,38 @@
-# React + Vite
+# Soul to Soul ERP — Version 1.0.0 Launch Guide
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Deployment URLs
+* **Frontend App**: `https://[your-frontend-domain]`
+* **Backend API**: `https://soul-to-soul-backend.onrender.com`
 
-Currently, two official plugins are available:
+## Initial Administrator Access
+On a fresh database, the system will automatically create:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+* **Email:** [admin@soultosoul.local](mailto:admin@soultosoul.local)
+* **Password:** `Admin@123`
 
-## React Compiler
+> **Mandatory Action:** Immediately log in and change this password to a secure private password.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## User Roles
+* **Admin:** full system control (users, settings, operations)
+* **Manager:** operational control (no settings/users)
+* **Staff:** daily operations
+* **Viewer:** read-only access
 
-## Expanding the ESLint configuration
+## Database & Environment Security
+* Rotate your Supabase database password
+* Store `DATABASE_URL` only in Render environment variables
+* Never store database credentials in source code, GitHub, or shared files
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Backup Responsibility
+* Perform weekly exports of:
+  * Products
+  * Users
+  * Inventory data
+* Store backups securely outside the system
+
+## System Status
+* All API endpoints are protected via JWT authentication
+* Role-based access control is enforced at backend level
+* Currency, formatting, and settings are dynamically driven by database configuration
+
+Welcome to Version 1.0

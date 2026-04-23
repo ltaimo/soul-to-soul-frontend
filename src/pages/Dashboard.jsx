@@ -37,25 +37,13 @@ export const Dashboard = ({ setActivePage }) => {
     value: kpis.inventoryBreakdown[key]
   })).filter(d => d.value > 0);
 
-  const canSeeFinancials = role === 'Admin' || role === 'Manager';
-  const canSeeAlerts = role === 'Admin' || role === 'Manager' || role === 'Inventory Staff';
+  const canSeeFinancials = user?.role === 'admin' || user?.role === 'manager';
+  const canSeeAlerts = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'staff';
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h1 className="page-title" style={{ marginBottom: 0 }}>Executive Dashboard</h1>
-        
-        {/* Role Switcher */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', backgroundColor: 'var(--color-primary)', color: 'white', padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-          <Shield size={18} />
-          <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Simulate View Role:</span>
-          <select value={role} onChange={e => setRole(e.target.value)} style={{ border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(0,0,0,0.1)', color: 'white', fontWeight: 600, padding: '0.25rem 0.5rem', borderRadius: '4px', cursor: 'pointer', outline: 'none' }}>
-            <option value="Admin" style={{color: 'black'}}>Admin</option>
-            <option value="Manager" style={{color: 'black'}}>Manager</option>
-            <option value="Inventory Staff" style={{color: 'black'}}>Inventory Staff</option>
-            <option value="Viewer" style={{color: 'black'}}>Viewer (Read-Only)</option>
-          </select>
-        </div>
       </div>
 
       {canSeeFinancials && (
@@ -171,7 +159,7 @@ export const Dashboard = ({ setActivePage }) => {
         <div className="card" style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--color-charcoal-light)' }}>
           <Shield size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
           <h3>Access Restricted</h3>
-          <p>Your simulated role '{role}' does not have permission to view the executive dashboard panels.</p>
+          <p>Your role '{user?.role}' does not have permission to view the executive dashboard panels.</p>
         </div>
       )}
     </div>
