@@ -1,19 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import * as XLSX from 'xlsx';
 import { Download, FileSpreadsheet } from 'lucide-react';
+import { StoreContext } from '../context/StoreContext';
+import { AuthContext } from '../context/AuthContext';
+import { formatCurrency, formatPercentage } from '../utils/formatters';
 
 export const Reports = () => {
+  const { settings } = useContext(StoreContext);
+  const { token, logout } = useContext(AuthContext);
   const [downloading, setDownloading] = useState(false);
 
   const downloadExcel = async (reportType) => {
     setDownloading(true);
     try {
       // For V1, we'll fetch the core API endpoints and transform them into flat Excel sheets
+      const fetchOptions = { headers: { 'Authorization': `Bearer ${token}` } };
       let data = [];
       let filename = `${reportType}_Report.xlsx`;
 
       if (reportType === 'Sales') {
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/sales`);
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/sales`, fetchOptions);
+        if (res.status === 401) return logout();
         const raw = await res.json();
         
         let sumRev = 0;
@@ -27,10 +34,10 @@ export const Reports = () => {
             'Date': new Date(s.date).toISOString().split('T')[0],
             'Customer': s.customerName || 'Retail',
             'Channel': s.channel,
-            'Total Revenue': `$${s.totalRevenue.toFixed(2)}`,
-            'Total COGS': `$${s.totalCogs.toFixed(2)}`,
-            'Gross Profit': `$${(s.totalRevenue - s.totalCogs).toFixed(2)}`,
-            'Gross Margin %': (((s.totalRevenue - s.totalCogs) / s.totalRevenue) * 100).toFixed(1) + '%'
+            'Total Revenue': formatCurrency(s.totalRevenue, settings),
+            'Total COGS': formatCurrency(s.totalCogs, settings),
+            'Gross Profit': formatCurrency(s.totalRevenue - s.totalCogs, settings),
+            'Gross Margin %': formatPercentage(s.totalRevenue > 0 ? ((s.totalRevenue - s.totalCogs) / s.totalRevenue) * 100 : 0, settings)
           };
         });
 
@@ -38,15 +45,19 @@ export const Reports = () => {
         data.push({});
         data.push({
           'Sale ID': 'TOTALS',
-          'Total Revenue': `$${sumRev.toFixed(2)}`,
-          'Total COGS': `$${sumCogs.toFixed(2)}`,
-          'Gross Profit': `$${(sumRev - sumCogs).toFixed(2)}`,
-          'Gross Margin %': sumRev > 0 ? (((sumRev - sumCogs) / sumRev) * 100).toFixed(1) + '%' : '0%'
+          'Date': '',
+          'Customer': '',
+          'Channel': '',
+          'Total Revenue': formatCurrency(sumRev, settings),
+          'Total COGS': formatCurrency(sumCogs, settings),
+          'Gross Profit': formatCurrency(sumRev - sumCogs, settings),
+          'Gross Margin %': formatPercentage(sumRev > 0 ? ((sumRev - sumCogs) / sumRev) * 100 : 0, settings)
         });
       }
 
       if (reportType === 'Inventory') {
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/products`);
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/products`, fetchOptions);
+        if (res.status === 401) return logout();
         const raw = await res.json();
         let totalVal = 0;
 
@@ -59,8 +70,8 @@ export const Reports = () => {
             'Category': p.category,
             'Type': p.type,
             'Current Stock': p.stock,
-            'Unit Cost (WAC)': `$${p.costPrice.toFixed(2)}`,
-            'Total Inventory Value': `$${val.toFixed(2)}`
+            'Unit Cost (WAC)': formatCurrency(p.costPrice, settings),
+            'Total Inventory Value': formatCurrency(val, settings)
           };
         });
 
@@ -68,7 +79,12 @@ export const Reports = () => {
         data.push({});
         data.push({
           'SKU': 'TOTAL VALUATION',
-          'Total Inventory Value': `$${totalVal.toFixed(2)}`
+          'Product Name': '',
+          'Category': '',
+          'Type': '',
+          'Current Stock': '',
+          'Unit Cost (WAC)': '',
+          'Total Inventory Value': formatCurrency(totalVal, settings)
         });
       }
 
@@ -80,6 +96,31 @@ export const Reports = () => {
 
       // Generate the XLSX via SheetJS
       const worksheet = XLSX.utils.json_to_sheet(data);
+
+      // Define visual column widths for polished output
+      if (reportType === 'Sales') {
+        worksheet['!cols'] = [
+          { wch: 10 }, // Sale ID
+          { wch: 15 }, // Date
+          { wch: 25 }, // Customer
+          { wch: 15 }, // Channel
+          { wch: 20 }, // Total Revenue
+          { wch: 20 }, // Total COGS
+          { wch: 20 }, // Gross Profit
+          { wch: 18 }  // Gross Margin %
+        ];
+      } else if (reportType === 'Inventory') {
+        worksheet['!cols'] = [
+          { wch: 20 }, // SKU
+          { wch: 35 }, // Product Name
+          { wch: 20 }, // Category
+          { wch: 15 }, // Type
+          { wch: 15 }, // Current Stock
+          { wch: 20 }, // Unit Cost
+          { wch: 25 }  // Total Inventory Value
+        ];
+      }
+
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, reportType);
       

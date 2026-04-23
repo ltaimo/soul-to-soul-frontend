@@ -1,22 +1,47 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import { AuthContext } from './AuthContext';
 
 export const StoreContext = createContext();
 
 export const StoreProvider = ({ children }) => {
   const [products, setProducts] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
+  const [settings, setSettings] = useState({
+    companyName: 'Soul to Soul ERP',
+    defaultCurrency: 'MZN',
+    currencySymbol: 'MT',
+    decimalFormatting: 2
+  });
   const [loading, setLoading] = useState(true);
+  const { token, logout } = useContext(AuthContext);
+
+  const fetchWithAuth = async (url, options = {}) => {
+    const headers = { ...options.headers };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401) {
+      logout();
+      throw new Error("Session expired. Please log in again.");
+    }
+    return res;
+  };
 
   const fetchItems = async () => {
     try {
-      const [prodRes, suppRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/products`),
-        fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/suppliers`)
+      const [prodRes, suppRes, settingsRes] = await Promise.all([
+        fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/products`),
+        fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/suppliers`),
+        fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/settings`)
       ]);
       const prods = await prodRes.json();
       const supps = await suppRes.json();
+      const stngs = await settingsRes.json();
+      
       setProducts(prods);
       setSuppliers(supps);
+      setSettings(stngs);
     } catch (e) {
       console.error("Failed to fetch initial data", e);
     } finally {
@@ -36,12 +61,11 @@ export const StoreProvider = ({ children }) => {
   };
 
   const receiveGoods = async (productId, receivedQty, landedCost) => {
-    // Determine if product has a supplier internally assigned
     const prod = products.find(p => p.id === productId);
     const supplierId = prod ? prod.supplierId : undefined;
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/receive`, {
+      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/receive`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -53,8 +77,6 @@ export const StoreProvider = ({ children }) => {
       });
       const data = await response.json();
       if (data.success) {
-        // Optimistically or deterministically update products
-        // We will just refetch to guarantee the source of truth is synced
         await fetchItems();
       }
     } catch (e) {
@@ -68,16 +90,79 @@ export const StoreProvider = ({ children }) => {
     return ((currentQty * currentCost) + (receivedQty * landedCost)) / totalQty;
   };
 
+  const createProduct = async (data) => {
+    try {
+      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw await response.json();
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || e.error || 'Failed to create product' };
+    }
+  };
+
+  const updateProduct = async (id, data) => {
+    try {
+      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw await response.json();
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to update product' };
+    }
+  };
+
+  const deactivateProduct = async (id) => {
+    try {
+      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/products/${id}/deactivate`, {
+        method: 'PATCH',
+      });
+      if (!response.ok) throw await response.json();
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to deactivate product' };
+    }
+  };
+
+  const updateSettings = async (data) => {
+    try {
+      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw await response.json();
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to update settings' };
+    }
+  };
+
   if (loading) return <div style={{padding: '2rem'}}>Loading Data from Database...</div>;
 
   return (
     <StoreContext.Provider value={{
       products,
       suppliers, 
+      settings,
       totalInventoryValue,
       getMargin,
       receiveGoods,
-      calculateProjectedWAC
+      calculateProjectedWAC,
+      createProduct,
+      updateProduct,
+      deactivateProduct,
+      updateSettings
     }}>
       {children}
     </StoreContext.Provider>

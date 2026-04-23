@@ -1,27 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, 
   LineChart, Line, PieChart, Pie, Cell 
 } from 'recharts';
 import { TrendingUp, AlertCircle, Target, DollarSign, Package, Shield } from 'lucide-react';
+import { formatCurrency, formatPercentage } from '../utils/formatters';
+import { StoreContext } from '../context/StoreContext';
+import { AuthContext } from '../context/AuthContext';
 
 const COLORS = ['#6B8E7E', '#E8DCCB', '#2E2E2E', '#F7F5F2'];
 
 export const Dashboard = ({ setActivePage }) => {
-  const [role, setRole] = useState('Admin'); // Simulated Role Switcher
+  const { settings } = useContext(StoreContext);
+  const { token, logout, user } = useContext(AuthContext);
   const [kpis, setKpis] = useState(null);
   const [alerts, setAlerts] = useState(null);
 
   useEffect(() => {
-    // Fetch aggregated data from analytics engine
+    const fetchOptions = {
+      headers: { 'Authorization': `Bearer ${token}` }
+    };
+
     Promise.all([
-      fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/analytics/kpis`).then(r => r.json()),
-      fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/analytics/alerts`).then(r => r.json())
+      fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/analytics/kpis`, fetchOptions).then(r => { if(r.status===401) logout(); return r.json()}),
+      fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/analytics/alerts`, fetchOptions).then(r => r.json())
     ]).then(([kpiData, alertsData]) => {
       setKpis(kpiData);
       setAlerts(alertsData);
     }).catch(err => console.error("Could not fetch analytics", err));
-  }, []);
+  }, [token, logout]);
 
   if (!kpis || !alerts) return <div style={{ padding: '2rem' }}>Loading BI Engine...</div>;
 
@@ -55,7 +62,7 @@ export const Dashboard = ({ setActivePage }) => {
         <div className="stats-grid" style={{ marginBottom: '2rem' }}>
           <div className="stat-card">
             <div className="stat-label">Total Inventory Value</div>
-            <div className="stat-value">${kpis.totalInventoryValue.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+            <div className="stat-value">{formatCurrency(kpis.totalInventoryValue, settings)}</div>
             <div className="stat-trend trend-up">
               <TrendingUp size={16} /> Based on exact WAC
             </div>
@@ -63,7 +70,7 @@ export const Dashboard = ({ setActivePage }) => {
           
           <div className="stat-card">
             <div className="stat-label">Gross Profit (Ledger)</div>
-            <div className="stat-value" style={{ color: 'var(--color-success)' }}>${kpis.totalGrossProfit.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+            <div className="stat-value" style={{ color: 'var(--color-success)' }}>{formatCurrency(kpis.totalGrossProfit, settings)}</div>
             <div className="stat-trend">
               <DollarSign size={16} /> Tracked across {kpis.salesTrend.length} sales days
             </div>
@@ -71,7 +78,7 @@ export const Dashboard = ({ setActivePage }) => {
 
           <div className="stat-card">
             <div className="stat-label">Avg Profit Margin</div>
-            <div className="stat-value">{kpis.avgProfitMargin.toFixed(1)}%</div>
+            <div className="stat-value">{formatPercentage(kpis.avgProfitMargin, settings)}</div>
             <div className="stat-trend">
               <Target size={16} /> Against strict Outbound COGS
             </div>
@@ -90,7 +97,7 @@ export const Dashboard = ({ setActivePage }) => {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="date" />
                   <YAxis />
-                  <RechartsTooltip formatter={(value) => `$${Number(value).toFixed(2)}`} />
+                  <RechartsTooltip formatter={(value) => formatCurrency(value, settings)} />
                   <Legend />
                   <Line type="monotone" dataKey="revenue" stroke="#6B8E7E" strokeWidth={3} name="Total Revenue" />
                   <Line type="monotone" dataKey="cogs" stroke="#D9534F" strokeWidth={3} name="Cost of Goods (COGS)" />
@@ -110,7 +117,7 @@ export const Dashboard = ({ setActivePage }) => {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <RechartsTooltip formatter={(value) => `$${Number(value).toFixed(2)}`} />
+                  <RechartsTooltip formatter={(value) => formatCurrency(value, settings)} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -129,27 +136,27 @@ export const Dashboard = ({ setActivePage }) => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
             <div 
               role="button"
-              onClick={() => setActivePage ? setActivePage('Inventory') : null}
+              onClick={() => setActivePage ? setActivePage('Inventory', 'stock_out') : null}
               style={{ backgroundColor: 'rgba(217, 83, 79, 0.05)', padding: '1.5rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'background 0.2s' }}
             >
               <h4 style={{ color: 'var(--color-danger)', fontWeight: 600 }}>Stock-Out Alerts</h4>
               <p style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{alerts.stockOutCount}</p>
-              <p style={{ fontSize: '0.875rem', color: 'var(--color-charcoal-light)' }}>Click to review Inventory bounds.</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-charcoal-light)' }}>Click to review zero-bound inventory.</p>
             </div>
 
             <div 
               role="button"
-              onClick={() => setActivePage ? setActivePage('Purchasing') : null}
+              onClick={() => setActivePage ? setActivePage('Inventory', 'low_stock') : null}
               style={{ backgroundColor: 'rgba(240, 173, 78, 0.05)', padding: '1.5rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'background 0.2s' }}
             >
               <h4 style={{ color: 'var(--color-warning)', fontWeight: 600 }}>Low Stock Warnings</h4>
               <p style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{alerts.lowStockCount}</p>
-              <p style={{ fontSize: '0.875rem', color: 'var(--color-charcoal-light)' }}>Click to order Replenishments.</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-charcoal-light)' }}>Click to view items under threshold.</p>
             </div>
 
             <div 
               role="button"
-              onClick={() => setActivePage ? setActivePage('Inventory') : null}
+              onClick={() => setActivePage ? setActivePage('Inventory', 'expiring') : null}
               style={{ backgroundColor: 'rgba(91, 192, 222, 0.05)', padding: '1.5rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'background 0.2s' }}
             >
               <h4 style={{ color: '#5bc0de', fontWeight: 600 }}>Expiring Soon (30d)</h4>
