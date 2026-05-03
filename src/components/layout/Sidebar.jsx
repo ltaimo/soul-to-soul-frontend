@@ -1,8 +1,7 @@
 import React, { useContext } from 'react';
-import { LayoutDashboard, Box, Package, ShoppingCart, Users, RefreshCw, BarChart2, FileSpreadsheet, Settings, Shield, LogOut } from 'lucide-react';
+import { LayoutDashboard, Box, Package, ShoppingCart, Users, RefreshCw, ReceiptText, FileSpreadsheet, Settings, Shield, LogOut } from 'lucide-react';
 import { StoreContext } from '../../context/StoreContext';
 import { AuthContext } from '../../context/AuthContext';
-import logo from '../../assets/logo.png';
 
 export const Sidebar = ({ activePage, setActivePage }) => {
   const { settings } = useContext(StoreContext);
@@ -15,7 +14,7 @@ export const Sidebar = ({ activePage, setActivePage }) => {
     { name: 'Purchasing', icon: <ShoppingCart size={20} /> },
     { name: 'Suppliers', icon: <Users size={20} /> },
     { name: 'Production', icon: <RefreshCw size={20} /> },
-    { name: 'Sales Insights', icon: <BarChart2 size={20} /> },
+    { name: 'Sales / POS', icon: <ReceiptText size={20} /> },
     { name: 'Reporting', icon: <FileSpreadsheet size={20} /> }
   ];
 
@@ -30,11 +29,11 @@ export const Sidebar = ({ activePage, setActivePage }) => {
 
   return (
     <aside style={{ width: '260px', backgroundColor: 'var(--color-surface)', borderRight: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ padding: '2rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginBottom: '0.25rem' }}>
-          <img src={logo} alt="Soul to Soul" style={{ height: "50px", objectFit: "contain" }} />
+      <div style={{ padding: '1.5rem 1.25rem', borderBottom: '1px solid var(--color-border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.6rem' }}>
+          <img src="/logo.png" alt="Soul to Soul" style={{ width: "150px", maxHeight: "120px", objectFit: "contain" }} />
         </div>
-        <p style={{ fontSize: '0.8rem', color: 'var(--color-charcoal-light)', marginTop: '0.25rem' }}>Inventory System</p>
+        <p style={{ fontSize: '0.78rem', color: 'var(--color-charcoal-light)', textAlign: 'center' }}>Inventory System</p>
       </div>
       <nav style={{ padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1, overflowY: 'auto' }}>
         {menuItems.map(item => (

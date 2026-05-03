@@ -1,204 +1,488 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Download,
+  Mail,
+  Minus,
+  Plus,
+  Printer,
+  ReceiptText,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { StoreContext } from '../context/StoreContext';
-import { ShoppingBag, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { AuthContext } from '../context/AuthContext';
+import { formatCurrency } from '../utils/formatters';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 export const SalesInsights = () => {
-  const { products } = useContext(StoreContext);
+  const { products, settings, refreshData } = useContext(StoreContext);
+  const { token, logout } = useContext(AuthContext);
   const [salesRecord, setSalesRecord] = useState([]);
-  
-  const [selectedProductId, setSelectedProductId] = useState('');
-  const [sellQty, setSellQty] = useState('');
+  const [query, setQuery] = useState('');
+  const [cart, setCart] = useState([]);
   const [customerName, setCustomerName] = useState('');
-  
-  const [successMsg, setSuccessMsg] = useState(false);
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [amountPaid, setAmountPaid] = useState('');
+  const [lastReceipt, setLastReceipt] = useState(null);
+  const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchWithAuth = async (url, options = {}) => {
+    const headers = { ...options.headers, Authorization: `Bearer ${token}` };
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401) {
+      logout();
+      throw new Error('Session expired. Please log in again.');
+    }
+    return res;
+  };
 
   const fetchSales = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/sales`);
-      const data = await res.json();
-      setSalesRecord(data);
+      const res = await fetchWithAuth(`${API_BASE}/api/sales`);
+      setSalesRecord(await res.json());
     } catch (e) {
-      console.error(e);
+      setErrorMsg(e.message || 'Could not load sales history.');
     }
   };
 
   useEffect(() => {
     fetchSales();
-  }, []);
+  }, [token]);
 
-  const selectedProduct = products.find(p => p.id === Number(selectedProductId));
-  const quantity = Number(sellQty) || 0;
-  
-  // Real-time margin preview
-  let projectedRevenue = 0;
-  let projectedCOGS = 0;
-  let projectedMargin = 0;
-  let sufficientStock = true;
+  const saleableProducts = useMemo(() => {
+    return products
+      .filter((product) => product.status !== 'Inactive' && product.sellingPrice > 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [products]);
 
-  if (selectedProduct) {
-    projectedRevenue = selectedProduct.sellingPrice * quantity;
-    projectedCOGS = selectedProduct.costPrice * quantity;
-    if (projectedRevenue > 0) {
-      projectedMargin = ((projectedRevenue - projectedCOGS) / projectedRevenue) * 100;
-    }
-    if (quantity > selectedProduct.stock) sufficientStock = false;
-  }
+  const filteredProducts = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    const source = term
+      ? saleableProducts.filter((product) =>
+          `${product.sku} ${product.name} ${product.category}`.toLowerCase().includes(term)
+        )
+      : saleableProducts;
 
-  const handleSale = async (e) => {
-    e.preventDefault();
+    return source.slice(0, 12);
+  }, [query, saleableProducts]);
+
+  const cartLines = useMemo(() => {
+    return cart.map((line) => {
+      const product = products.find((item) => item.id === line.productId);
+      const available = product?.stock || 0;
+      const revenue = (product?.sellingPrice || 0) * line.quantity;
+      const cogs = (product?.costPrice || 0) * line.quantity;
+      return {
+        ...line,
+        product,
+        available,
+        revenue,
+        cogs,
+        hasStockIssue: !product || line.quantity > available,
+      };
+    });
+  }, [cart, products]);
+
+  const totals = cartLines.reduce(
+    (acc, line) => ({
+      revenue: acc.revenue + line.revenue,
+      cogs: acc.cogs + line.cogs,
+      units: acc.units + line.quantity,
+    }),
+    { revenue: 0, cogs: 0, units: 0 }
+  );
+
+  const grossProfit = totals.revenue - totals.cogs;
+  const margin = totals.revenue > 0 ? (grossProfit / totals.revenue) * 100 : 0;
+  const hasStockIssue = cartLines.some((line) => line.hasStockIssue);
+  const paidAmount = Number(amountPaid) || 0;
+  const effectivePaidAmount = paymentMethod === 'Cash' ? paidAmount : totals.revenue;
+  const changeGiven = Math.max(0, effectivePaidAmount - totals.revenue);
+  const hasPaymentIssue = paymentMethod === 'Cash' && cart.length > 0 && paidAmount < totals.revenue;
+
+  const addToCart = (product) => {
     setErrorMsg('');
-    if (!selectedProductId || quantity <= 0) return;
-
-    if (!sufficientStock) {
-      setErrorMsg(`Cannot process sale. Only ${selectedProduct.stock} units available.`);
+    if (product.stock <= 0) {
+      setErrorMsg(`${product.name} is out of stock.`);
       return;
     }
 
+    setCart((current) => {
+      const existing = current.find((line) => line.productId === product.id);
+      if (existing) {
+        return current.map((line) =>
+          line.productId === product.id
+            ? { ...line, quantity: Math.min(line.quantity + 1, product.stock) }
+            : line
+        );
+      }
+      return [...current, { productId: product.id, quantity: 1 }];
+    });
+  };
+
+  const updateQty = (productId, quantity) => {
+    const nextQty = Math.max(1, Number(quantity) || 1);
+    setCart((current) =>
+      current.map((line) => (line.productId === productId ? { ...line, quantity: nextQty } : line))
+    );
+  };
+
+  const removeFromCart = (productId) => {
+    setCart((current) => current.filter((line) => line.productId !== productId));
+  };
+
+  const receiptLines = (sale) => sale?.items?.map((item) => ({
+    name: item.product?.name || `Product #${item.productId}`,
+    quantity: item.quantity,
+    price: item.unitSellingPrice,
+    total: item.quantity * item.unitSellingPrice,
+  })) || [];
+
+  const buildReceiptText = (sale) => {
+    if (!sale) return '';
+    const lines = receiptLines(sale)
+      .map((line) => `${line.quantity} x ${line.name} - ${formatCurrency(line.total, settings)}`)
+      .join('\n');
+
+    return [
+      'Soul to Soul',
+      `Receipt #${sale.id}`,
+      `Date: ${new Date(sale.date).toLocaleString()}`,
+      `Customer: ${sale.customerName || 'Retail Customer'}`,
+      '',
+      lines,
+      '',
+      `Total: ${formatCurrency(sale.totalRevenue, settings)}`,
+      `Payment: ${sale.paymentMethod}`,
+      `Paid: ${formatCurrency(sale.amountPaid, settings)}`,
+      `Change: ${formatCurrency(sale.changeGiven, settings)}`,
+    ].join('\n');
+  };
+
+  const printReceipt = (sale) => {
+    const rows = receiptLines(sale).map((line) => `
+      <tr>
+        <td>${line.name}</td>
+        <td style="text-align:center">${line.quantity}</td>
+        <td style="text-align:right">${formatCurrency(line.price, settings)}</td>
+        <td style="text-align:right">${formatCurrency(line.total, settings)}</td>
+      </tr>
+    `).join('');
+    const win = window.open('', '_blank', 'width=420,height=720');
+    win.document.write(`
+      <html>
+        <head>
+          <title>Receipt #${sale.id}</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #2E2E2E; padding: 24px; }
+            img { width: 180px; display: block; margin: 0 auto 12px; }
+            h1 { font-size: 20px; text-align: center; margin: 0 0 4px; }
+            p { margin: 4px 0; font-size: 13px; }
+            table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+            th, td { border-bottom: 1px solid #E8E5DF; padding: 8px 0; }
+            th { text-align: left; }
+            .total { display: flex; justify-content: space-between; font-weight: 700; margin-top: 8px; }
+            .muted { color: #5A5A5A; text-align: center; margin-top: 20px; }
+            button { width: 100%; padding: 10px; margin-top: 18px; }
+            @media print { button { display: none; } body { padding: 0; } }
+          </style>
+        </head>
+        <body>
+          <img src="/logo.png" alt="Soul to Soul" />
+          <h1>Receipt #${sale.id}</h1>
+          <p><strong>Date:</strong> ${new Date(sale.date).toLocaleString()}</p>
+          <p><strong>Customer:</strong> ${sale.customerName || 'Retail Customer'}</p>
+          <table>
+            <thead><tr><th>Item</th><th>Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Total</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="total"><span>Total</span><span>${formatCurrency(sale.totalRevenue, settings)}</span></div>
+          <div class="total"><span>Paid</span><span>${formatCurrency(sale.amountPaid, settings)}</span></div>
+          <div class="total"><span>Change</span><span>${formatCurrency(sale.changeGiven, settings)}</span></div>
+          <p><strong>Payment:</strong> ${sale.paymentMethod}</p>
+          <p class="muted">Thank you for shopping with Soul to Soul.</p>
+          <button onclick="window.print()">Print / Save PDF</button>
+        </body>
+      </html>
+    `);
+    win.document.close();
+    win.focus();
+  };
+
+  const emailReceipt = (sale) => {
+    const subject = encodeURIComponent(`Soul to Soul Receipt #${sale.id}`);
+    const body = encodeURIComponent(buildReceiptText(sale));
+    const to = encodeURIComponent(sale.customerEmail || '');
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+  };
+
+  const handleSale = async (event) => {
+    event.preventDefault();
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    if (cart.length === 0) {
+      setErrorMsg('Add at least one product to the cart.');
+      return;
+    }
+    if (hasStockIssue) {
+      setErrorMsg('Review cart quantities. One or more products exceed available stock.');
+      return;
+    }
+    if (hasPaymentIssue) {
+      setErrorMsg('Amount paid is lower than the sale total.');
+      return;
+    }
+
+    setSubmitting(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/sales/confirm`, {
+      const response = await fetchWithAuth(`${API_BASE}/api/sales/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerName: customerName || 'Retail Customer',
-          items: [{ productId: Number(selectedProductId), quantity }]
-        })
+          customerEmail,
+          paymentMethod,
+          amountPaid: effectivePaidAmount,
+          items: cart.map((line) => ({ productId: line.productId, quantity: line.quantity })),
+        }),
       });
 
       const data = await response.json();
-      if (response.ok && data.success) {
-        setSuccessMsg(true);
-        setTimeout(() => {
-          setSuccessMsg(false);
-          setSelectedProductId('');
-          setSellQty('');
-          setCustomerName('');
-          window.location.reload(); // Quick sync for prototype
-        }, 1500);
-      } else {
-        setErrorMsg(data.message || 'Failed to process sale.');
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to process sale.');
       }
+
+      setSuccessMsg(`Sale #${data.saleId} completed.`);
+      setLastReceipt(data.sale);
+      setCart([]);
+      setCustomerName('');
+      setCustomerEmail('');
+      setAmountPaid('');
+      await Promise.all([refreshData(), fetchSales()]);
     } catch (err) {
-      setErrorMsg('Network error communicating with the backend.');
+      setErrorMsg(err.message || 'Network error communicating with the backend.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <div>
-      <h1 className="page-title">Sales Orders & Revenue Tracker</h1>
-      
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr', gap: '2rem' }}>
-        
-        {/* Outbound Sale Terminal */}
-        <div className="card">
-          <h3 style={{ marginBottom: '1.5rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ShoppingBag size={20} className="text-primary" /> New Outbound Sale
-          </h3>
-          
-          {successMsg && (
-            <div style={{ backgroundColor: 'rgba(92,184,92,0.15)', color: 'var(--color-success)', padding: '1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <CheckCircle2 size={20} /> Sale registered successfully!
-            </div>
-          )}
+      <div className="pos-header">
+        <div>
+          <h1 className="page-title" style={{ marginBottom: '0.25rem' }}>Sales / POS</h1>
+          <p className="page-subtitle">Register sales, validate stock, and deduct inventory automatically.</p>
+        </div>
+      </div>
 
-          {errorMsg && (
-            <div style={{ backgroundColor: 'rgba(217,83,79,0.15)', color: 'var(--color-danger)', padding: '1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <AlertTriangle size={20} /> {errorMsg}
-            </div>
-          )}
+      {successMsg && <div className="inline-alert inline-alert-success"><CheckCircle2 size={18} /> {successMsg}</div>}
+      {errorMsg && <div className="inline-alert inline-alert-danger"><AlertTriangle size={18} /> {errorMsg}</div>}
+
+      <div className="pos-grid">
+        <section className="card pos-products">
+          <div className="section-heading">
+            <h3>Products</h3>
+            <span>{saleableProducts.length} saleable</span>
+          </div>
+          <div className="search-input">
+            <Search size={18} />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search product, SKU, or category" />
+          </div>
+
+          <div className="product-pick-list">
+            {filteredProducts.map((product) => (
+              <button type="button" key={product.id} className="product-pick-row" onClick={() => addToCart(product)}>
+                <div>
+                  <strong>{product.name}</strong>
+                  <span>{product.sku} - {product.category}</span>
+                </div>
+                <div>
+                  <strong>{formatCurrency(product.sellingPrice, settings)}</strong>
+                  <span className={product.stock <= 0 ? 'stock-bad' : 'stock-good'}>{product.stock} in stock</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="card pos-cart">
+          <div className="section-heading">
+            <h3>Current Sale</h3>
+            <ReceiptText size={20} />
+          </div>
 
           <form onSubmit={handleSale}>
-            <div className="form-group">
-              <label className="form-label">Select Final Product</label>
-              <select className="form-input" value={selectedProductId} onChange={(e) => setSelectedProductId(e.target.value)} required>
-                <option value="">-- Choose Product --</option>
-                {products.filter(p => p.type === 'Finished' || p.sellingPrice > 0).map(p => (
-                  <option key={p.id} value={p.id}>{p.sku} | {p.name} (${p.sellingPrice.toFixed(2)})</option>
-                ))}
-              </select>
-            </div>
-            
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <div className="form-group" style={{ flex: 1 }}>
-                <label className="form-label">Quantity Sold</label>
-                <input type="number" className="form-input" min="1" value={sellQty} onChange={(e) => setSellQty(e.target.value)} required />
+            <div className="payment-grid">
+              <div className="form-group">
+                <label className="form-label">Customer</label>
+                <input className="form-input" value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Retail Customer" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Customer Email</label>
+                <input type="email" className="form-input" value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} placeholder="Optional receipt draft" />
               </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Customer Reference (Optional)</label>
-              <input type="text" className="form-input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="e.g. Sephora PO-991" />
+            <div className="cart-lines">
+              {cartLines.length === 0 ? (
+                <div className="empty-cart">Select products to begin a sale.</div>
+              ) : (
+                cartLines.map((line) => (
+                  <div className={`cart-line ${line.hasStockIssue ? 'cart-line-error' : ''}`} key={line.productId}>
+                    <div className="cart-line-main">
+                      <strong>{line.product?.name || 'Unknown product'}</strong>
+                      <span>{formatCurrency(line.product?.sellingPrice || 0, settings)} - Available: {line.available}</span>
+                    </div>
+                    <div className="cart-qty">
+                      <button type="button" onClick={() => updateQty(line.productId, line.quantity - 1)}><Minus size={14} /></button>
+                      <input type="number" min="1" value={line.quantity} onChange={(event) => updateQty(line.productId, event.target.value)} />
+                      <button type="button" onClick={() => updateQty(line.productId, line.quantity + 1)}><Plus size={14} /></button>
+                    </div>
+                    <strong className="cart-line-total">{formatCurrency(line.revenue, settings)}</strong>
+                    <button className="icon-danger" type="button" onClick={() => removeFromCart(line.productId)}><Trash2 size={16} /></button>
+                  </div>
+                ))
+              )}
             </div>
 
-            {selectedProduct && (
-              <div style={{ backgroundColor: sufficientStock ? 'rgba(107,142,126,0.05)' : 'rgba(217,83,79,0.05)', padding: '1rem', borderRadius: 'var(--radius-sm)', marginTop: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                  <span className="text-muted">Stock Availability:</span>
-                  <span style={{ fontWeight: 600, color: sufficientStock ? 'var(--color-success)' : 'var(--color-danger)'}}>
-                    {selectedProduct.stock} units
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                  <span className="text-muted">Est. Revenue:</span>
-                  <span style={{ fontWeight: 600 }}>${projectedRevenue.toFixed(2)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-                  <span className="text-muted">Gross Margin Return:</span>
-                  <span style={{ fontWeight: 600, color: projectedMargin > 50 ? 'var(--color-success)' : 'var(--color-warning)' }}>
-                    {projectedMargin.toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-            )}
+            <div className="pos-summary">
+              <div><span>Units</span><strong>{totals.units}</strong></div>
+              <div><span>Revenue</span><strong>{formatCurrency(totals.revenue, settings)}</strong></div>
+              <div><span>Gross Profit</span><strong>{formatCurrency(grossProfit, settings)}</strong></div>
+              <div><span>Margin</span><strong>{margin.toFixed(1)}%</strong></div>
+            </div>
 
-            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1.5rem', opacity: !sufficientStock ? 0.5 : 1 }} disabled={!sufficientStock}>
-              Confirm Checkout & Lock COGS
+            <div className="payment-grid">
+              <div className="form-group">
+                <label className="form-label">Payment Method</label>
+                <select
+                  className="form-input"
+                  value={paymentMethod}
+                  onChange={(event) => {
+                    setPaymentMethod(event.target.value);
+                    if (event.target.value !== 'Cash') setAmountPaid('');
+                  }}
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="M-Pesa">M-Pesa</option>
+                  <option value="E-Mola">E-Mola</option>
+                  <option value="Card">Card</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Amount Paid</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="form-input"
+                  value={paymentMethod === 'Cash' ? amountPaid : totals.revenue.toFixed(settings?.decimalFormatting ?? 2)}
+                  onChange={(event) => setAmountPaid(event.target.value)}
+                  disabled={paymentMethod !== 'Cash'}
+                />
+              </div>
+            </div>
+
+            <div className={`change-box ${hasPaymentIssue ? 'change-box-error' : ''}`}>
+              <span>{hasPaymentIssue ? 'Remaining' : 'Change'}</span>
+              <strong>{formatCurrency(hasPaymentIssue ? totals.revenue - paidAmount : changeGiven, settings)}</strong>
+            </div>
+
+            <button className="btn btn-primary pos-submit" type="submit" disabled={submitting || cart.length === 0 || hasStockIssue || hasPaymentIssue}>
+              {submitting ? 'Processing sale...' : 'Complete Sale'}
             </button>
           </form>
-        </div>
+        </section>
+      </div>
 
-        {/* Ledger */}
-        <div className="card">
-          <h3 style={{ marginBottom: '1.5rem', fontWeight: '600' }}>Historical Sales Ledger</h3>
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Customer</th>
-                  <th>Revenue</th>
-                  <th>Locked COGS</th>
-                  <th>Gross Margin</th>
-                </tr>
-              </thead>
-              <tbody>
-                {salesRecord.length === 0 ? (
-                  <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-charcoal-light)' }}>No sales logged yet.</td></tr>
-                ) : (
-                  salesRecord.map((sale) => {
-                    const d = new Date(sale.date);
-                    const margin = sale.totalRevenue > 0 ? (((sale.totalRevenue - sale.totalCogs) / sale.totalRevenue) * 100) : 0;
-                    return (
-                      <tr key={sale.id}>
-                        <td style={{ fontSize: '0.875rem' }}>{d.toLocaleDateString()} {d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
-                        <td style={{ fontWeight: 500 }}>{sale.customerName}</td>
-                        <td style={{ fontWeight: 600, color: 'var(--color-primary)' }}>${sale.totalRevenue.toFixed(2)}</td>
-                        <td style={{ color: 'var(--color-danger)' }}>${sale.totalCogs.toFixed(2)}</td>
-                        <td>
-                          <span className={`badge ${margin > 50 ? 'badge-success' : 'badge-warning'}`}>
-                            {margin.toFixed(1)}%
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+      <section className="card" style={{ marginTop: '2rem' }}>
+        <div className="section-heading">
+          <h3>Recent Sales</h3>
+          <span>{salesRecord.length} records</span>
+        </div>
+        <div className="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Items</th>
+                <th>Revenue</th>
+                <th>Payment</th>
+                <th>COGS</th>
+                <th>Margin</th>
+                <th>Receipt</th>
+              </tr>
+            </thead>
+            <tbody>
+              {salesRecord.length === 0 ? (
+                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-charcoal-light)' }}>No sales logged yet.</td></tr>
+              ) : (
+                salesRecord.map((sale) => {
+                  const saleDate = new Date(sale.date);
+                  const saleMargin = sale.totalRevenue > 0 ? ((sale.totalRevenue - sale.totalCogs) / sale.totalRevenue) * 100 : 0;
+                  const units = sale.items?.reduce((acc, item) => acc + item.quantity, 0) || 0;
+                  return (
+                    <tr key={sale.id}>
+                      <td>{saleDate.toLocaleDateString()} {saleDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                      <td>{sale.customerName}</td>
+                      <td>{units}</td>
+                      <td style={{ fontWeight: 600 }}>{formatCurrency(sale.totalRevenue, settings)}</td>
+                      <td>{sale.paymentMethod || 'Cash'}</td>
+                      <td>{formatCurrency(sale.totalCogs, settings)}</td>
+                      <td><span className={`badge ${saleMargin >= 40 ? 'badge-success' : 'badge-warning'}`}>{saleMargin.toFixed(1)}%</span></td>
+                      <td><button className="btn btn-ghost" style={{ padding: '0.25rem 0.5rem' }} onClick={() => setLastReceipt(sale)}>Open</button></td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {lastReceipt && (
+        <div className="modal-backdrop">
+          <div className="modal-card receipt-modal">
+            <div className="modal-header">
+              <div>
+                <h2>Receipt #{lastReceipt.id}</h2>
+                <p>{new Date(lastReceipt.date).toLocaleString()}</p>
+              </div>
+              <button className="icon-button" onClick={() => setLastReceipt(null)} type="button"><X size={18} /></button>
+            </div>
+
+            <div className="receipt-preview">
+              <img src="/logo.png" alt="Soul to Soul" />
+              <div className="receipt-meta"><span>Customer</span><strong>{lastReceipt.customerName || 'Retail Customer'}</strong></div>
+              {receiptLines(lastReceipt).map((line, index) => (
+                <div className="receipt-line" key={`${line.name}-${index}`}>
+                  <span>{line.quantity} x {line.name}</span>
+                  <strong>{formatCurrency(line.total, settings)}</strong>
+                </div>
+              ))}
+              <div className="receipt-total"><span>Total</span><strong>{formatCurrency(lastReceipt.totalRevenue, settings)}</strong></div>
+              <div className="receipt-line"><span>Paid via {lastReceipt.paymentMethod}</span><strong>{formatCurrency(lastReceipt.amountPaid, settings)}</strong></div>
+              <div className="receipt-line"><span>Change</span><strong>{formatCurrency(lastReceipt.changeGiven, settings)}</strong></div>
+            </div>
+
+            <div className="receipt-actions">
+              <button className="btn btn-secondary" type="button" onClick={() => printReceipt(lastReceipt)}><Printer size={18} /> Print</button>
+              <button className="btn btn-secondary" type="button" onClick={() => printReceipt(lastReceipt)}><Download size={18} /> PDF</button>
+              <button className="btn btn-primary" type="button" onClick={() => emailReceipt(lastReceipt)}><Mail size={18} /> Email Draft</button>
+            </div>
           </div>
         </div>
-
-      </div>
+      )}
     </div>
   );
 };

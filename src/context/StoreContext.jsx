@@ -84,6 +84,28 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
+  const adjustStock = async (productId, quantity, reference) => {
+    try {
+      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/adjust`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId,
+          quantity,
+          reference
+        })
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to adjust stock');
+      }
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to adjust stock' };
+    }
+  };
+
   const calculateProjectedWAC = (currentQty, currentCost, receivedQty, landedCost) => {
     const totalQty = currentQty + receivedQty;
     if (totalQty === 0) return 0;
@@ -158,11 +180,13 @@ export const StoreProvider = ({ children }) => {
       totalInventoryValue,
       getMargin,
       receiveGoods,
+      adjustStock,
       calculateProjectedWAC,
       createProduct,
       updateProduct,
       deactivateProduct,
-      updateSettings
+      updateSettings,
+      refreshData: fetchItems
     }}>
       {children}
     </StoreContext.Provider>

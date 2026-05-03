@@ -1,7 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { ShieldCheck } from 'lucide-react';
-import logo from '../assets/logo.png';
+import { AlertCircle, ArrowRight, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
@@ -39,51 +38,68 @@ export const Login = () => {
   };
 
   return (
-    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-bg)' }}>
-      <div className="card" style={{ width: '400px', padding: '3rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <img src={logo} alt="Soul to Soul" style={{ height: '120px', marginBottom: '20px' }} />
-          <p style={{ color: 'var(--color-charcoal-light)', fontSize: '0.875rem', marginTop: '0.25rem' }}>Secure Administrator Login</p>
-        </div>
+    <main className="login-shell">
+      <section className="login-form-panel" aria-label="Sign in">
+        <div className="login-card">
+          <img className="login-logo" src="/logo.png" alt="Soul to Soul" />
 
-        {errorMsg && (
-          <div style={{ width: '100%', backgroundColor: 'rgba(217,83,79,0.1)', color: 'var(--color-danger)', padding: '0.75rem', borderRadius: '4px', marginBottom: '1.5rem', textAlign: 'center', fontSize: '0.875rem' }}>
-            {errorMsg}
+          <div className="login-card-header">
+            <div className="login-secure-icon">
+              <ShieldCheck size={22} />
+            </div>
+            <div>
+              <h2>Welcome back</h2>
+              <p>Sign in to manage daily operations.</p>
+            </div>
           </div>
-        )}
 
-        <form onSubmit={handleSubmit} style={{ width: '100%' }}>
-          <div className="form-group">
-            <label style={{ fontSize: '0.875rem' }}>Email Address</label>
-            <input 
-              type="email" 
-              className="form-input" 
-              required 
-              value={email} 
-              onChange={e => setEmail(e.target.value)} 
-              disabled={loading}
-            />
-          </div>
-          <div className="form-group" style={{ marginBottom: '2rem' }}>
-            <label style={{ fontSize: '0.875rem' }}>Password</label>
-            <input 
-              type="password" 
-              className="form-input" 
-              required 
-              value={password} 
-              onChange={e => setPassword(e.target.value)} 
-              disabled={loading}
-            />
-          </div>
-          
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', display: 'flex', justifyContent: 'center', padding: '0.75rem' }} disabled={loading}>
-            {loading ? 'Authenticating...' : <><ShieldCheck size={18} /> Authenticate</>}
-          </button>
-        </form>
-        <div style={{ marginTop: '2rem', fontSize: '12px', color: 'rgba(0,0,0,0.5)', textAlign: 'center' }}>
-          System by Layton Taimo. All rights reserved.
+          {errorMsg && (
+            <div className="login-alert" role="alert">
+              <AlertCircle size={18} />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="login-form">
+            <label className="field-label" htmlFor="email">Email address</label>
+            <div className="input-shell">
+              <Mail size={18} />
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                disabled={loading}
+                placeholder="admin@soultosoul.local"
+              />
+            </div>
+
+            <label className="field-label" htmlFor="password">Password</label>
+            <div className="input-shell">
+              <LockKeyhole size={18} />
+              <input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                disabled={loading}
+                placeholder="Enter your password"
+              />
+            </div>
+
+            <button type="submit" className="btn btn-primary login-submit" disabled={loading}>
+              <span>{loading ? 'Authenticating...' : 'Sign in securely'}</span>
+              {!loading && <ArrowRight size={18} />}
+            </button>
+          </form>
+
+          <p className="login-footnote">System by Layton Taimo. All rights reserved.</p>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 };

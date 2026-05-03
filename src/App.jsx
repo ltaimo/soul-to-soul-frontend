@@ -32,6 +32,7 @@ function AppContent() {
       case 'Purchasing': return <Purchasing activeFilter={activeFilter} />;
       case 'Suppliers': return <Suppliers activeFilter={activeFilter} />;
       case 'Production': return <Production activeFilter={activeFilter} />;
+      case 'Sales / POS':
       case 'Sales Insights': return <SalesInsights activeFilter={activeFilter} />;
       case 'Reporting': return <Reports activeFilter={activeFilter} />;
       case 'User Administration': return <Users />;
