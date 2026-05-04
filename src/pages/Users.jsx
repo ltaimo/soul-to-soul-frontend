@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Plus, X, Edit, UserCheck, UserX, Shield, ShieldAlert, KeyRound } from 'lucide-react';
+import { ROLE_PROFILES, getRoleProfile } from '../config/roles';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
@@ -8,7 +9,7 @@ const initialFormData = {
   fullName: '',
   email: '',
   password: '',
-  role: 'staff',
+  role: 'salesperson',
   status: 'active'
 };
 
@@ -21,6 +22,7 @@ export const Users = () => {
   const [editId, setEditId] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const { token, logout } = useContext(AuthContext);
+  const selectedRoleProfile = getRoleProfile(formData.role);
 
   const fetchWithAuth = async (url, options = {}) => {
     const headers = { ...options.headers };
@@ -178,7 +180,7 @@ export const Users = () => {
                       color: user.role === 'admin' ? 'var(--color-danger)' : 'inherit'
                     }}>
                       {user.role === 'admin' ? <ShieldAlert size={12} style={{marginRight: '4px'}} /> : null}
-                      {user.role}
+                      {getRoleProfile(user.role).label}
                     </span>
                   </td>
                   <td>
@@ -256,13 +258,22 @@ export const Users = () => {
                 </div>
 
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>System Role</label>
+                  <label>User Profile / Access Level</label>
                   <select className="form-input" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
-                    <option value="admin">Administrator</option>
-                    <option value="manager">Manager</option>
-                    <option value="staff">Staff</option>
-                    <option value="viewer">Viewer</option>
+                    {Object.entries(ROLE_PROFILES).filter(([role]) => role !== 'staff').map(([role, profile]) => (
+                      <option key={role} value={role}>{profile.label}</option>
+                    ))}
                   </select>
+                </div>
+
+                <div className="role-profile-card">
+                  <strong>{selectedRoleProfile.label}</strong>
+                  <p>{selectedRoleProfile.description}</p>
+                  <div className="permission-chip-list">
+                    {selectedRoleProfile.privileges.map((privilege) => (
+                      <span key={privilege}>{privilege}</span>
+                    ))}
+                  </div>
                 </div>
               </div>
 

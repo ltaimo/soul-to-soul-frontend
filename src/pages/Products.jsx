@@ -16,11 +16,12 @@ const initialFormData = {
   status: 'Active',
   brand: '',
   description: '',
-  barcode: ''
+  barcode: '',
+  supplierId: ''
 };
 
 export const Products = () => {
-  const { products, settings, getMargin, createProduct, updateProduct, deactivateProduct } = useContext(StoreContext);
+  const { products, suppliers, settings, getMargin, createProduct, updateProduct, deactivateProduct } = useContext(StoreContext);
   const [searchTerm, setSearchTerm] = useState('');
   
   const [showModal, setShowModal] = useState(false);
@@ -56,7 +57,8 @@ export const Products = () => {
       status: prod.status,
       brand: prod.brand || '',
       description: prod.description || '',
-      barcode: prod.barcode || ''
+      barcode: prod.barcode || '',
+      supplierId: prod.supplierId || ''
     });
     setEditId(prod.id);
     setIsEditing(true);
@@ -140,6 +142,7 @@ export const Products = () => {
                 <th>SKU</th>
                 <th>Product Name</th>
                 <th>Type</th>
+                <th>Supplier</th>
                 <th>Cost Price</th>
                 <th>Selling Price</th>
                 <th>Margin</th>
@@ -161,6 +164,7 @@ export const Products = () => {
                     <td>
                       <span className="badge" style={{ backgroundColor: 'var(--color-bg)' }}>{item.type}</span>
                     </td>
+                    <td>{suppliers.find((supplier) => supplier.id === item.supplierId)?.name || '-'}</td>
                     <td>{formatCurrency(item.costPrice, settings)}</td>
                     <td>{item.sellingPrice > 0 ? formatCurrency(item.sellingPrice, settings) : '-'}</td>
                     <td style={{ color: marginColor, fontWeight: margin > 0 ? 600 : 400 }}>
@@ -231,6 +235,16 @@ export const Products = () => {
                 <div className="form-group">
                   <label>Category *</label>
                   <input type="text" className="form-input" required value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} />
+                </div>
+
+                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                  <label>Primary Supplier</label>
+                  <select className="form-input" value={formData.supplierId} onChange={e => setFormData({...formData, supplierId: e.target.value})}>
+                    <option value="">No supplier assigned</option>
+                    {suppliers.filter((supplier) => supplier.status !== 'Inactive').map((supplier) => (
+                      <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="form-group">

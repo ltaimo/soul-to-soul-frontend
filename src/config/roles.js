@@ -1,0 +1,54 @@
+export const ROLE_PROFILES = {
+  admin: {
+    label: 'Administrator',
+    description: 'Full access to all modules, settings, users, and permissions.',
+    pages: ['Dashboard', 'Products', 'Inventory', 'Purchasing', 'Suppliers', 'Production', 'Sales / POS', 'Reporting', 'User Administration', 'Settings'],
+    privileges: ['Full system control', 'Manage users and roles', 'Manage settings', 'View financial reports'],
+  },
+  manager: {
+    label: 'Manager',
+    description: 'Operational manager with access to sales, stock, reports, and production.',
+    pages: ['Dashboard', 'Products', 'Inventory', 'Purchasing', 'Suppliers', 'Production', 'Sales / POS', 'Reporting'],
+    privileges: ['View dashboard and reports', 'Manage products', 'Receive and adjust stock', 'Run sales and production'],
+  },
+  cashier: {
+    label: 'Cashier',
+    description: 'Point-of-sale access for checkout and receipt generation.',
+    pages: ['Sales / POS'],
+    privileges: ['Create sales', 'Print or generate receipts', 'View recent sales'],
+  },
+  salesperson: {
+    label: 'Salesperson',
+    description: 'Sales desk profile with POS and product visibility.',
+    pages: ['Products', 'Sales / POS'],
+    privileges: ['Create sales', 'View products and prices', 'Generate receipts'],
+  },
+  stock_manager: {
+    label: 'Stock Manager',
+    description: 'Inventory and supplier control without user administration.',
+    pages: ['Dashboard', 'Products', 'Inventory', 'Purchasing', 'Suppliers', 'Production'],
+    privileges: ['Manage products', 'Receive and adjust stock', 'Manage suppliers', 'Prepare production recipes'],
+  },
+  production_manager: {
+    label: 'Production Manager',
+    description: 'Manufacturing profile for recipes and production runs.',
+    pages: ['Products', 'Inventory', 'Production'],
+    privileges: ['View products and stock', 'Manage production recipes', 'Run production batches'],
+  },
+  viewer: {
+    label: 'Viewer',
+    description: 'Read-only access for basic review.',
+    pages: ['Dashboard', 'Products', 'Inventory'],
+    privileges: ['View operational dashboards', 'View products and stock'],
+  },
+  staff: {
+    label: 'Staff',
+    description: 'Legacy staff profile with basic sales access.',
+    pages: ['Products', 'Sales / POS'],
+    privileges: ['Create sales', 'View products and prices'],
+  },
+};
+
+export const getRoleProfile = (role) => ROLE_PROFILES[role] || ROLE_PROFILES.viewer;
+
+export const canAccessPage = (role, page) => getRoleProfile(role).pages.includes(page);

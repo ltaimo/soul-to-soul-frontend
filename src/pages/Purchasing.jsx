@@ -1,26 +1,44 @@
 import React, { useState, useContext } from 'react';
 import { StoreContext } from '../context/StoreContext';
-import { ArrowDownToLine, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, ArrowDownToLine, CheckCircle2 } from 'lucide-react';
 
 export const Purchasing = () => {
-  const { products, receiveGoods, calculateProjectedWAC, getMargin } = useContext(StoreContext);
+  const { products, suppliers, receiveGoods, calculateProjectedWAC, getMargin } = useContext(StoreContext);
   
   const [selectedProductId, setSelectedProductId] = useState('');
+  const [selectedSupplierId, setSelectedSupplierId] = useState('');
   const [receivedQty, setReceivedQty] = useState('');
   const [landedCost, setLandedCost] = useState('');
   const [successMsg, setSuccessMsg] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const selectedProduct = products.find(p => p.id === Number(selectedProductId));
   
-  const handleReceive = (e) => {
+  const handleReceive = async (e) => {
     e.preventDefault();
+    setErrorMsg('');
     if (!selectedProductId || !receivedQty || !landedCost) return;
-    
-    receiveGoods(Number(selectedProductId), Number(receivedQty), Number(landedCost));
+
+    setSubmitting(true);
+    const result = await receiveGoods(
+      Number(selectedProductId),
+      Number(receivedQty),
+      Number(landedCost),
+      selectedSupplierId ? Number(selectedSupplierId) : undefined
+    );
+    setSubmitting(false);
+
+    if (!result.success) {
+      setErrorMsg(result.error || 'Could not receive stock.');
+      return;
+    }
+
     setSuccessMsg(true);
     setTimeout(() => {
       setSuccessMsg(false);
       setSelectedProductId('');
+      setSelectedSupplierId('');
       setReceivedQty('');
       setLandedCost('');
     }, 2500);
@@ -39,7 +57,7 @@ export const Purchasing = () => {
     <div>
       <h1 className="page-title">Receive Goods (Purchasing)</h1>
       
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr', gap: '2rem' }}>
+      <div className="purchasing-grid">
         {/* Entry Form */}
         <div className="card">
           <h3 style={{ marginBottom: '1.5rem', fontWeight: '600' }}>Inbound Shipment Entry</h3>
@@ -47,6 +65,12 @@ export const Purchasing = () => {
           {successMsg && (
             <div style={{ backgroundColor: 'rgba(92, 184, 92, 0.15)', color: 'var(--color-success)', padding: '1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <CheckCircle2 size={20} /> Inventory updated and WAC recalculated successfully!
+            </div>
+          )}
+
+          {errorMsg && (
+            <div className="inline-alert inline-alert-danger">
+              <AlertTriangle size={18} /> {errorMsg}
             </div>
           )}
 
@@ -62,6 +86,20 @@ export const Purchasing = () => {
                 <option value="">-- Select Item --</option>
                 {products.map(p => (
                   <option key={p.id} value={p.id}>{p.sku} | {p.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Supplier</label>
+              <select
+                className="form-input"
+                value={selectedSupplierId}
+                onChange={(e) => setSelectedSupplierId(e.target.value)}
+              >
+                <option value="">Use product supplier / no supplier</option>
+                {suppliers.filter((supplier) => supplier.status !== 'Inactive').map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
                 ))}
               </select>
             </div>
@@ -95,8 +133,8 @@ export const Purchasing = () => {
             </div>
 
             <div style={{ marginTop: '2rem' }}>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', fontSize: '1rem', padding: '1rem' }}>
-                <ArrowDownToLine size={20} /> Confirm Receipt & Update Ledger
+              <button type="submit" className="btn btn-primary" disabled={submitting} style={{ width: '100%', fontSize: '1rem', padding: '1rem' }}>
+                <ArrowDownToLine size={20} /> {submitting ? 'Receiving...' : 'Confirm Receipt & Update Ledger'}
               </button>
             </div>
           </form>

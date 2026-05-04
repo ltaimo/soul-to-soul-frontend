@@ -1,6 +1,7 @@
-import React, { useState, useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { StoreProvider } from './context/StoreContext';
 import { AuthProvider, AuthContext } from './context/AuthContext';
+import { LanguageProvider, LanguageContext } from './context/LanguageContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Dashboard } from './pages/Dashboard';
 import { Products } from './pages/Products';
@@ -13,9 +14,11 @@ import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { Users } from './pages/Users';
 import { Login } from './pages/Login';
+import { canAccessPage, getRoleProfile } from './config/roles';
 
 function AppContent() {
   const { user } = useContext(AuthContext);
+  const { language } = useContext(LanguageContext);
   const [activePage, setActivePage] = useState('Dashboard');
   const [activeFilter, setActiveFilter] = useState(null);
 
@@ -24,25 +27,57 @@ function AppContent() {
     setActiveFilter(filter);
   };
 
+  useEffect(() => {
+    if (user && !canAccessPage(user.role, activePage)) {
+      setActivePage(getRoleProfile(user.role).pages[0] || 'Dashboard');
+      setActiveFilter(null);
+    }
+  }, [user, activePage]);
+
   const renderContent = () => {
-    switch (activePage) {
-      case 'Dashboard': return <Dashboard setActivePage={navigateTo} />;
-      case 'Products': return <Products activeFilter={activeFilter} />;
-      case 'Inventory': return <Inventory activeFilter={activeFilter} />;
-      case 'Purchasing': return <Purchasing activeFilter={activeFilter} />;
-      case 'Suppliers': return <Suppliers activeFilter={activeFilter} />;
-      case 'Production': return <Production activeFilter={activeFilter} />;
-      case 'Sales / POS':
-      case 'Sales Insights': return <SalesInsights activeFilter={activeFilter} />;
-      case 'Reporting': return <Reports activeFilter={activeFilter} />;
-      case 'User Administration': return <Users />;
-      case 'Settings': return <Settings />;
-      default: return (
-        <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: 'var(--color-charcoal-light)' }}>
-          <h2 style={{ marginBottom: '1rem', color: 'var(--color-primary)' }}>{activePage}</h2>
-          <p>This module is scheduled for future development.</p>
+    if (!canAccessPage(user?.role, activePage)) {
+      return (
+        <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+          <h2 style={{ color: 'var(--color-primary)', marginBottom: '0.75rem' }}>
+            {language === 'pt' ? 'Acesso restrito' : 'Access restricted'}
+          </h2>
+          <p className="page-subtitle">
+            {language === 'pt'
+              ? 'O teu perfil nao tem permissao para abrir este modulo.'
+              : 'Your profile does not have permission to open this module.'}
+          </p>
         </div>
       );
+    }
+
+    switch (activePage) {
+      case 'Dashboard':
+        return <Dashboard setActivePage={navigateTo} />;
+      case 'Products':
+        return <Products activeFilter={activeFilter} />;
+      case 'Inventory':
+        return <Inventory activeFilter={activeFilter} />;
+      case 'Purchasing':
+        return <Purchasing activeFilter={activeFilter} />;
+      case 'Suppliers':
+        return <Suppliers activeFilter={activeFilter} />;
+      case 'Production':
+        return <Production activeFilter={activeFilter} />;
+      case 'Sales / POS':
+        return <SalesInsights activeFilter={activeFilter} />;
+      case 'Reporting':
+        return <Reports activeFilter={activeFilter} />;
+      case 'User Administration':
+        return <Users />;
+      case 'Settings':
+        return <Settings />;
+      default:
+        return (
+          <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: 'var(--color-charcoal-light)' }}>
+            <h2 style={{ marginBottom: '1rem', color: 'var(--color-primary)' }}>{activePage}</h2>
+            <p>{language === 'pt' ? 'Este modulo esta previsto para desenvolvimento futuro.' : 'This module is scheduled for future development.'}</p>
+          </div>
+        );
     }
   };
 
@@ -64,9 +99,11 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
 

@@ -1,10 +1,12 @@
 import React, { useContext, useMemo, useState } from 'react';
 import { StoreContext } from '../context/StoreContext';
+import { LanguageContext } from '../context/LanguageContext';
 import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, CheckCircle2, FilterX, X } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 
 export const Inventory = ({ activeFilter }) => {
   const { products, settings, receiveGoods, adjustStock } = useContext(StoreContext);
+  const { t } = useContext(LanguageContext);
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [receiveForm, setReceiveForm] = useState({
@@ -136,7 +138,7 @@ export const Inventory = ({ activeFilter }) => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
-          <h1 className="page-title" style={{ marginBottom: '0.25rem' }}>Stock & Inventory</h1>
+          <h1 className="page-title" style={{ marginBottom: '0.25rem' }}>{t.stockInventory}</h1>
           {activeFilter && (
             <p style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.875rem', color: 'var(--color-primary)', backgroundColor: 'rgba(107, 142, 126, 0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
               <FilterX size={14} /> Filtered View: {filterLabels[activeFilter] || activeFilter}
@@ -145,10 +147,10 @@ export const Inventory = ({ activeFilter }) => {
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
           <button className="btn btn-secondary" onClick={() => openReceiveModal()}>
-            <ArrowDownToLine size={18} /> Receive Stock
+            <ArrowDownToLine size={18} /> {t.receiveStock}
           </button>
           <button className="btn btn-ghost" onClick={() => openAdjustModal()}>
-            <ArrowUpFromLine size={18} /> Adjust Stock
+            <ArrowUpFromLine size={18} /> {t.adjustStock}
           </button>
         </div>
       </div>
@@ -158,12 +160,12 @@ export const Inventory = ({ activeFilter }) => {
           <table>
             <thead>
               <tr>
-                <th>Product</th>
-                <th>Category</th>
-                <th>Unit Cost</th>
-                <th>Qty on Hand</th>
-                <th>Total Value</th>
-                <th>Action</th>
+                <th>{t.product}</th>
+                <th>{t.category}</th>
+                <th>{t.unitCost}</th>
+                <th>{t.qtyOnHand}</th>
+                <th>{t.totalValue}</th>
+                <th>{t.action}</th>
               </tr>
             </thead>
             <tbody>
@@ -191,7 +193,7 @@ export const Inventory = ({ activeFilter }) => {
                     {formatCurrency(item.costPrice * item.stock, settings)}
                   </td>
                   <td>
-                    <button className="btn btn-ghost" style={{ padding: '0.25rem 0.5rem' }} onClick={() => openReceiveModal(item)}>Receive</button>
+                    <button className="btn btn-ghost" style={{ padding: '0.25rem 0.5rem' }} onClick={() => openReceiveModal(item)}>{t.receive}</button>
                   </td>
                 </tr>
               ))}
@@ -199,7 +201,7 @@ export const Inventory = ({ activeFilter }) => {
           </table>
           {filteredProducts.length === 0 && (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-charcoal-light)' }}>
-              No products found matching the current filter.
+              {t.noProducts}
             </div>
           )}
         </div>
@@ -210,7 +212,7 @@ export const Inventory = ({ activeFilter }) => {
           <div className="modal-card receive-modal">
             <div className="modal-header">
               <div>
-                <h2>Receive Stock</h2>
+                <h2>{t.receiveStock}</h2>
                 <p>Add physical stock and update weighted average cost.</p>
               </div>
               <button className="icon-button" onClick={() => setShowReceiveModal(false)} type="button">
@@ -317,7 +319,7 @@ export const Inventory = ({ activeFilter }) => {
           <div className="modal-card receive-modal">
             <div className="modal-header">
               <div>
-                <h2>Adjust Stock</h2>
+                <h2>{t.adjustStock}</h2>
                 <p>Correct stock counts after physical verification.</p>
               </div>
               <button className="icon-button" onClick={() => setShowAdjustModal(false)} type="button">

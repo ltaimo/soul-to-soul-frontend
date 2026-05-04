@@ -60,9 +60,9 @@ export const StoreProvider = ({ children }) => {
     return (((selling - cost) / selling) * 100).toFixed(1);
   };
 
-  const receiveGoods = async (productId, receivedQty, landedCost) => {
+  const receiveGoods = async (productId, receivedQty, landedCost, selectedSupplierId) => {
     const prod = products.find(p => p.id === productId);
-    const supplierId = prod ? prod.supplierId : undefined;
+    const supplierId = selectedSupplierId || (prod ? prod.supplierId : undefined);
 
     try {
       const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/receive`, {
@@ -76,11 +76,14 @@ export const StoreProvider = ({ children }) => {
         })
       });
       const data = await response.json();
-      if (data.success) {
-        await fetchItems();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to receive goods');
       }
+      await fetchItems();
+      return { success: true, data };
     } catch (e) {
       console.error("Failed to receive goods via API", e);
+      return { success: false, error: e.message || 'Failed to receive goods' };
     }
   };
 
@@ -155,6 +158,54 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
+  const createSupplier = async (data) => {
+    try {
+      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/suppliers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to create supplier' };
+    }
+  };
+
+  const updateSupplier = async (id, data) => {
+    try {
+      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/suppliers/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to update supplier' };
+    }
+  };
+
+  const updateSupplierStatus = async (id, status) => {
+    try {
+      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/suppliers/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to update supplier status' };
+    }
+  };
+
   const updateSettings = async (data) => {
     try {
       const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/settings`, {
@@ -185,6 +236,9 @@ export const StoreProvider = ({ children }) => {
       createProduct,
       updateProduct,
       deactivateProduct,
+      createSupplier,
+      updateSupplier,
+      updateSupplierStatus,
       updateSettings,
       refreshData: fetchItems
     }}>

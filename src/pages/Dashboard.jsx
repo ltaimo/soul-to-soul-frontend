@@ -38,7 +38,7 @@ export const Dashboard = ({ setActivePage }) => {
   })).filter(d => d.value > 0);
 
   const canSeeFinancials = user?.role === 'admin' || user?.role === 'manager';
-  const canSeeAlerts = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'staff';
+  const canSeeAlerts = ['admin', 'manager', 'stock_manager', 'production_manager', 'viewer'].includes(user?.role);
 
   return (
     <div>

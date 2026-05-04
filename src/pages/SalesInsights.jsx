@@ -14,13 +14,15 @@ import {
 } from 'lucide-react';
 import { StoreContext } from '../context/StoreContext';
 import { AuthContext } from '../context/AuthContext';
+import { LanguageContext } from '../context/LanguageContext';
 import { formatCurrency } from '../utils/formatters';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 export const SalesInsights = () => {
   const { products, settings, refreshData } = useContext(StoreContext);
-  const { token, logout } = useContext(AuthContext);
+  const { token, logout, user } = useContext(AuthContext);
+  const { language, t } = useContext(LanguageContext);
   const [salesRecord, setSalesRecord] = useState([]);
   const [query, setQuery] = useState('');
   const [cart, setCart] = useState([]);
@@ -155,14 +157,15 @@ export const SalesInsights = () => {
       'Soul to Soul',
       `Receipt #${sale.id}`,
       `Date: ${new Date(sale.date).toLocaleString()}`,
-      `Customer: ${sale.customerName || 'Retail Customer'}`,
+      `${t.customer}: ${sale.customerName || t.retailCustomer}`,
+      `${t.seller}: ${sale.sellerName || user?.fullName || user?.email || ''}`,
       '',
       lines,
       '',
       `Total: ${formatCurrency(sale.totalRevenue, settings)}`,
-      `Payment: ${sale.paymentMethod}`,
-      `Paid: ${formatCurrency(sale.amountPaid, settings)}`,
-      `Change: ${formatCurrency(sale.changeGiven, settings)}`,
+      `${t.paymentMethod}: ${sale.paymentMethod}`,
+      `${t.amountPaid}: ${formatCurrency(sale.amountPaid, settings)}`,
+      `${t.change}: ${formatCurrency(sale.changeGiven, settings)}`,
     ].join('\n');
   };
 
@@ -198,7 +201,8 @@ export const SalesInsights = () => {
           <img src="/logo.png" alt="Soul to Soul" />
           <h1>Receipt #${sale.id}</h1>
           <p><strong>Date:</strong> ${new Date(sale.date).toLocaleString()}</p>
-          <p><strong>Customer:</strong> ${sale.customerName || 'Retail Customer'}</p>
+          <p><strong>${t.customer}:</strong> ${sale.customerName || t.retailCustomer}</p>
+          <p><strong>${t.seller}:</strong> ${sale.sellerName || user?.fullName || user?.email || ''}</p>
           <table>
             <thead><tr><th>Item</th><th>Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Total</th></tr></thead>
             <tbody>${rows}</tbody>
@@ -206,8 +210,8 @@ export const SalesInsights = () => {
           <div class="total"><span>Total</span><span>${formatCurrency(sale.totalRevenue, settings)}</span></div>
           <div class="total"><span>Paid</span><span>${formatCurrency(sale.amountPaid, settings)}</span></div>
           <div class="total"><span>Change</span><span>${formatCurrency(sale.changeGiven, settings)}</span></div>
-          <p><strong>Payment:</strong> ${sale.paymentMethod}</p>
-          <p class="muted">Thank you for shopping with Soul to Soul.</p>
+          <p><strong>${t.paymentMethod}:</strong> ${sale.paymentMethod}</p>
+          <p class="muted">${language === 'pt' ? 'Obrigado por comprar na Soul to Soul.' : 'Thank you for shopping with Soul to Soul.'}</p>
           <button onclick="window.print()">Print / Save PDF</button>
         </body>
       </html>
@@ -278,8 +282,8 @@ export const SalesInsights = () => {
     <div>
       <div className="pos-header">
         <div>
-          <h1 className="page-title" style={{ marginBottom: '0.25rem' }}>Sales / POS</h1>
-          <p className="page-subtitle">Register sales, validate stock, and deduct inventory automatically.</p>
+          <h1 className="page-title" style={{ marginBottom: '0.25rem' }}>{t.salesPos}</h1>
+          <p className="page-subtitle">{t.salesSubtitle}</p>
         </div>
       </div>
 
@@ -289,12 +293,12 @@ export const SalesInsights = () => {
       <div className="pos-grid">
         <section className="card pos-products">
           <div className="section-heading">
-            <h3>Products</h3>
-            <span>{saleableProducts.length} saleable</span>
+            <h3>{t.products}</h3>
+            <span>{saleableProducts.length} {t.productsCount}</span>
           </div>
           <div className="search-input">
             <Search size={18} />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search product, SKU, or category" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.searchProducts} />
           </div>
 
           <div className="product-pick-list">
@@ -315,25 +319,26 @@ export const SalesInsights = () => {
 
         <section className="card pos-cart">
           <div className="section-heading">
-            <h3>Current Sale</h3>
+            <h3>{t.currentSale}</h3>
             <ReceiptText size={20} />
           </div>
 
           <form onSubmit={handleSale}>
             <div className="payment-grid">
               <div className="form-group">
-                <label className="form-label">Customer</label>
-                <input className="form-input" value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Retail Customer" />
+                <label className="form-label">{t.customer}</label>
+                <input className="form-input" value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder={t.retailCustomer} />
               </div>
               <div className="form-group">
-                <label className="form-label">Customer Email</label>
-                <input type="email" className="form-input" value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} placeholder="Optional receipt draft" />
+                <label className="form-label">{t.customerEmail}</label>
+                <input type="email" className="form-input" value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} placeholder={t.receiptDraft} />
               </div>
             </div>
+            <div className="seller-chip">{t.seller}: <strong>{user?.fullName || user?.email}</strong></div>
 
             <div className="cart-lines">
               {cartLines.length === 0 ? (
-                <div className="empty-cart">Select products to begin a sale.</div>
+                <div className="empty-cart">{t.selectProducts}</div>
               ) : (
                 cartLines.map((line) => (
                   <div className={`cart-line ${line.hasStockIssue ? 'cart-line-error' : ''}`} key={line.productId}>
@@ -354,15 +359,15 @@ export const SalesInsights = () => {
             </div>
 
             <div className="pos-summary">
-              <div><span>Units</span><strong>{totals.units}</strong></div>
-              <div><span>Revenue</span><strong>{formatCurrency(totals.revenue, settings)}</strong></div>
-              <div><span>Gross Profit</span><strong>{formatCurrency(grossProfit, settings)}</strong></div>
-              <div><span>Margin</span><strong>{margin.toFixed(1)}%</strong></div>
+              <div><span>{t.units}</span><strong>{totals.units}</strong></div>
+              <div><span>{t.revenue}</span><strong>{formatCurrency(totals.revenue, settings)}</strong></div>
+              <div><span>{t.grossProfit}</span><strong>{formatCurrency(grossProfit, settings)}</strong></div>
+              <div><span>{t.margin}</span><strong>{margin.toFixed(1)}%</strong></div>
             </div>
 
             <div className="payment-grid">
               <div className="form-group">
-                <label className="form-label">Payment Method</label>
+                <label className="form-label">{t.paymentMethod}</label>
                 <select
                   className="form-input"
                   value={paymentMethod}
@@ -379,7 +384,7 @@ export const SalesInsights = () => {
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">Amount Paid</label>
+                <label className="form-label">{t.amountPaid}</label>
                 <input
                   type="number"
                   min="0"
@@ -393,12 +398,12 @@ export const SalesInsights = () => {
             </div>
 
             <div className={`change-box ${hasPaymentIssue ? 'change-box-error' : ''}`}>
-              <span>{hasPaymentIssue ? 'Remaining' : 'Change'}</span>
+              <span>{hasPaymentIssue ? t.remaining : t.change}</span>
               <strong>{formatCurrency(hasPaymentIssue ? totals.revenue - paidAmount : changeGiven, settings)}</strong>
             </div>
 
             <button className="btn btn-primary pos-submit" type="submit" disabled={submitting || cart.length === 0 || hasStockIssue || hasPaymentIssue}>
-              {submitting ? 'Processing sale...' : 'Complete Sale'}
+              {submitting ? t.processingSale : t.completeSale}
             </button>
           </form>
         </section>
@@ -406,26 +411,27 @@ export const SalesInsights = () => {
 
       <section className="card" style={{ marginTop: '2rem' }}>
         <div className="section-heading">
-          <h3>Recent Sales</h3>
-          <span>{salesRecord.length} records</span>
+          <h3>{t.recentSales}</h3>
+          <span>{salesRecord.length} {t.records}</span>
         </div>
         <div className="table-container">
           <table>
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Customer</th>
-                <th>Items</th>
-                <th>Revenue</th>
-                <th>Payment</th>
+                <th>{t.customer}</th>
+                <th>{t.units}</th>
+                <th>{t.revenue}</th>
+                <th>{t.seller}</th>
+                <th>{t.paymentMethod}</th>
                 <th>COGS</th>
-                <th>Margin</th>
-                <th>Receipt</th>
+                <th>{t.margin}</th>
+                <th>{t.receipt}</th>
               </tr>
             </thead>
             <tbody>
               {salesRecord.length === 0 ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-charcoal-light)' }}>No sales logged yet.</td></tr>
+                <tr><td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-charcoal-light)' }}>No sales logged yet.</td></tr>
               ) : (
                 salesRecord.map((sale) => {
                   const saleDate = new Date(sale.date);
@@ -437,10 +443,11 @@ export const SalesInsights = () => {
                       <td>{sale.customerName}</td>
                       <td>{units}</td>
                       <td style={{ fontWeight: 600 }}>{formatCurrency(sale.totalRevenue, settings)}</td>
+                      <td>{sale.sellerName || '-'}</td>
                       <td>{sale.paymentMethod || 'Cash'}</td>
                       <td>{formatCurrency(sale.totalCogs, settings)}</td>
                       <td><span className={`badge ${saleMargin >= 40 ? 'badge-success' : 'badge-warning'}`}>{saleMargin.toFixed(1)}%</span></td>
-                      <td><button className="btn btn-ghost" style={{ padding: '0.25rem 0.5rem' }} onClick={() => setLastReceipt(sale)}>Open</button></td>
+                      <td><button className="btn btn-ghost" style={{ padding: '0.25rem 0.5rem' }} onClick={() => setLastReceipt(sale)}>{t.open}</button></td>
                     </tr>
                   );
                 })
@@ -463,7 +470,8 @@ export const SalesInsights = () => {
 
             <div className="receipt-preview">
               <img src="/logo.png" alt="Soul to Soul" />
-              <div className="receipt-meta"><span>Customer</span><strong>{lastReceipt.customerName || 'Retail Customer'}</strong></div>
+              <div className="receipt-meta"><span>{t.customer}</span><strong>{lastReceipt.customerName || t.retailCustomer}</strong></div>
+              <div className="receipt-meta"><span>{t.seller}</span><strong>{lastReceipt.sellerName || user?.fullName || user?.email}</strong></div>
               {receiptLines(lastReceipt).map((line, index) => (
                 <div className="receipt-line" key={`${line.name}-${index}`}>
                   <span>{line.quantity} x {line.name}</span>
@@ -471,14 +479,14 @@ export const SalesInsights = () => {
                 </div>
               ))}
               <div className="receipt-total"><span>Total</span><strong>{formatCurrency(lastReceipt.totalRevenue, settings)}</strong></div>
-              <div className="receipt-line"><span>Paid via {lastReceipt.paymentMethod}</span><strong>{formatCurrency(lastReceipt.amountPaid, settings)}</strong></div>
-              <div className="receipt-line"><span>Change</span><strong>{formatCurrency(lastReceipt.changeGiven, settings)}</strong></div>
+              <div className="receipt-line"><span>{t.paymentMethod}: {lastReceipt.paymentMethod}</span><strong>{formatCurrency(lastReceipt.amountPaid, settings)}</strong></div>
+              <div className="receipt-line"><span>{t.change}</span><strong>{formatCurrency(lastReceipt.changeGiven, settings)}</strong></div>
             </div>
 
             <div className="receipt-actions">
-              <button className="btn btn-secondary" type="button" onClick={() => printReceipt(lastReceipt)}><Printer size={18} /> Print</button>
-              <button className="btn btn-secondary" type="button" onClick={() => printReceipt(lastReceipt)}><Download size={18} /> PDF</button>
-              <button className="btn btn-primary" type="button" onClick={() => emailReceipt(lastReceipt)}><Mail size={18} /> Email Draft</button>
+              <button className="btn btn-secondary" type="button" onClick={() => printReceipt(lastReceipt)}><Printer size={18} /> {t.print}</button>
+              <button className="btn btn-secondary" type="button" onClick={() => printReceipt(lastReceipt)}><Download size={18} /> {t.pdf}</button>
+              <button className="btn btn-primary" type="button" onClick={() => emailReceipt(lastReceipt)}><Mail size={18} /> {t.emailDraft}</button>
             </div>
           </div>
         </div>

@@ -1,11 +1,13 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { AlertCircle, ArrowRight, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
+import { LanguageContext } from '../context/LanguageContext';
+import { AlertCircle, ArrowRight, LockKeyhole, Mail } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 export const Login = () => {
   const { login } = useContext(AuthContext);
+  const { language, setLanguage, t } = useContext(LanguageContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -42,16 +44,10 @@ export const Login = () => {
       <section className="login-form-panel" aria-label="Sign in">
         <div className="login-card">
           <img className="login-logo" src="/logo.png" alt="Soul to Soul" />
-
-          <div className="login-card-header">
-            <div className="login-secure-icon">
-              <ShieldCheck size={22} />
-            </div>
-            <div>
-              <h2>Welcome back</h2>
-              <p>Sign in to manage daily operations.</p>
-            </div>
-          </div>
+          <select className="language-select login-language" value={language} onChange={(event) => setLanguage(event.target.value)} aria-label="Language">
+            <option value="en">EN</option>
+            <option value="pt">PT</option>
+          </select>
 
           {errorMsg && (
             <div className="login-alert" role="alert">
@@ -61,7 +57,7 @@ export const Login = () => {
           )}
 
           <form onSubmit={handleSubmit} className="login-form">
-            <label className="field-label" htmlFor="email">Email address</label>
+            <label className="field-label" htmlFor="email">{t.emailAddress}</label>
             <div className="input-shell">
               <Mail size={18} />
               <input
@@ -76,7 +72,7 @@ export const Login = () => {
               />
             </div>
 
-            <label className="field-label" htmlFor="password">Password</label>
+            <label className="field-label" htmlFor="password">{t.password}</label>
             <div className="input-shell">
               <LockKeyhole size={18} />
               <input
@@ -92,7 +88,7 @@ export const Login = () => {
             </div>
 
             <button type="submit" className="btn btn-primary login-submit" disabled={loading}>
-              <span>{loading ? 'Authenticating...' : 'Sign in securely'}</span>
+              <span>{loading ? t.authenticating : t.signInSecurely}</span>
               {!loading && <ArrowRight size={18} />}
             </button>
           </form>
