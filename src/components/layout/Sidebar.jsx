@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { LayoutDashboard, Box, Package, ShoppingCart, Users, RefreshCw, ReceiptText, FileSpreadsheet, Settings, Shield, LogOut } from 'lucide-react';
+import { LayoutDashboard, Box, Package, ShoppingCart, Users, RefreshCw, ReceiptText, FileSpreadsheet, Settings, Shield, LogOut, HeartHandshake } from 'lucide-react';
 import { StoreContext } from '../../context/StoreContext';
 import { AuthContext } from '../../context/AuthContext';
 import { LanguageContext } from '../../context/LanguageContext';
@@ -16,6 +16,7 @@ export const Sidebar = ({ activePage, setActivePage }) => {
     { id: 'Inventory', name: t.inventory, icon: <Package size={20} /> },
     { id: 'Purchasing', name: t.purchasing, icon: <ShoppingCart size={20} /> },
     { id: 'Suppliers', name: t.suppliers, icon: <Users size={20} /> },
+    { id: 'Customers', name: t.customers, icon: <HeartHandshake size={20} /> },
     { id: 'Production', name: t.production, icon: <RefreshCw size={20} /> },
     { id: 'Sales / POS', name: t.salesPos, icon: <ReceiptText size={20} /> },
     { id: 'Reporting', name: t.reporting, icon: <FileSpreadsheet size={20} /> }

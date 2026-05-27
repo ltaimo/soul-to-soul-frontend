@@ -15,30 +15,35 @@ export const Dashboard = ({ setActivePage }) => {
   const { token, logout, user } = useContext(AuthContext);
   const [kpis, setKpis] = useState(null);
   const [alerts, setAlerts] = useState(null);
+  const canSeeFinancials = user?.role === 'admin' || user?.role === 'manager';
+  const canSeeAlerts = ['admin', 'manager', 'stock_manager', 'production_manager', 'viewer'].includes(user?.role);
 
   useEffect(() => {
     const fetchOptions = {
       headers: { 'Authorization': `Bearer ${token}` }
     };
 
-    Promise.all([
-      fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/analytics/kpis`, fetchOptions).then(r => { if(r.status===401) logout(); return r.json()}),
-      fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/analytics/alerts`, fetchOptions).then(r => r.json())
-    ]).then(([kpiData, alertsData]) => {
+    const requests = [
+      canSeeFinancials
+        ? fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/analytics/kpis`, fetchOptions).then(r => { if(r.status===401) logout(); return r.json()})
+        : Promise.resolve(null),
+      canSeeAlerts
+        ? fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/analytics/alerts`, fetchOptions).then(r => { if(r.status===401) logout(); return r.json()})
+        : Promise.resolve(null)
+    ];
+
+    Promise.all(requests).then(([kpiData, alertsData]) => {
       setKpis(kpiData);
       setAlerts(alertsData);
     }).catch(err => console.error("Could not fetch analytics", err));
-  }, [token, logout]);
+  }, [token, logout, canSeeFinancials, canSeeAlerts]);
 
-  if (!kpis || !alerts) return <div style={{ padding: '2rem' }}>Loading BI Engine...</div>;
+  if ((canSeeFinancials && !kpis) || (canSeeAlerts && !alerts)) return <div style={{ padding: '2rem' }}>Loading BI Engine...</div>;
 
-  const invPieData = Object.keys(kpis.inventoryBreakdown).map(key => ({
+  const invPieData = Object.keys(kpis?.inventoryBreakdown || {}).map(key => ({
     name: key,
     value: kpis.inventoryBreakdown[key]
   })).filter(d => d.value > 0);
-
-  const canSeeFinancials = user?.role === 'admin' || user?.role === 'manager';
-  const canSeeAlerts = ['admin', 'manager', 'stock_manager', 'production_manager', 'viewer'].includes(user?.role);
 
   return (
     <div>
@@ -143,9 +148,7 @@ export const Dashboard = ({ setActivePage }) => {
             </div>
 
             <div 
-              role="button"
-              onClick={() => setActivePage ? setActivePage('Inventory', 'expiring') : null}
-              style={{ backgroundColor: 'rgba(91, 192, 222, 0.05)', padding: '1.5rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'background 0.2s' }}
+              style={{ backgroundColor: 'rgba(91, 192, 222, 0.05)', padding: '1.5rem', borderRadius: 'var(--radius-sm)' }}
             >
               <h4 style={{ color: '#5bc0de', fontWeight: 600 }}>Expiring Soon (30d)</h4>
               <p style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{alerts.expiringCount}</p>

@@ -636,6 +636,22 @@ tr:hover {
   color: var(--color-charcoal);
 }
 
+.customer-save-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 44px;
+  color: var(--color-charcoal-light);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 1.35rem;
+}
+
+.customer-save-toggle input {
+  width: 16px;
+  height: 16px;
+}
+
 .cart-line {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 116px 110px 36px;

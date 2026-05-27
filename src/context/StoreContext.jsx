@@ -6,6 +6,7 @@ export const StoreContext = createContext();
 export const StoreProvider = ({ children }) => {
   const [products, setProducts] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [settings, setSettings] = useState({
     companyName: 'Soul to Soul ERP',
     defaultCurrency: 'MZN',
@@ -30,17 +31,20 @@ export const StoreProvider = ({ children }) => {
 
   const fetchItems = async () => {
     try {
-      const [prodRes, suppRes, settingsRes] = await Promise.all([
+      const [prodRes, suppRes, customersRes, settingsRes] = await Promise.all([
         fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/products`),
         fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/suppliers`),
+        fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/customers`),
         fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/settings`)
       ]);
       const prods = await prodRes.json();
       const supps = await suppRes.json();
+      const custs = await customersRes.json();
       const stngs = await settingsRes.json();
       
       setProducts(prods);
       setSuppliers(supps);
+      setCustomers(custs);
       setSettings(stngs);
     } catch (e) {
       console.error("Failed to fetch initial data", e);
@@ -206,6 +210,54 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
+  const createCustomer = async (data) => {
+    try {
+      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/customers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true, customer: result.customer };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to create customer' };
+    }
+  };
+
+  const updateCustomer = async (id, data) => {
+    try {
+      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/customers/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to update customer' };
+    }
+  };
+
+  const updateCustomerStatus = async (id, status) => {
+    try {
+      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/customers/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to update customer status' };
+    }
+  };
+
   const updateSettings = async (data) => {
     try {
       const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/settings`, {
@@ -227,6 +279,7 @@ export const StoreProvider = ({ children }) => {
     <StoreContext.Provider value={{
       products,
       suppliers, 
+      customers,
       settings,
       totalInventoryValue,
       getMargin,
@@ -239,6 +292,9 @@ export const StoreProvider = ({ children }) => {
       createSupplier,
       updateSupplier,
       updateSupplierStatus,
+      createCustomer,
+      updateCustomer,
+      updateCustomerStatus,
       updateSettings,
       refreshData: fetchItems
     }}>

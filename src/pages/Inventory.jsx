@@ -1,12 +1,15 @@
 import React, { useContext, useMemo, useState } from 'react';
 import { StoreContext } from '../context/StoreContext';
 import { LanguageContext } from '../context/LanguageContext';
+import { AuthContext } from '../context/AuthContext';
 import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, CheckCircle2, FilterX, X } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 
 export const Inventory = ({ activeFilter }) => {
   const { products, settings, receiveGoods, adjustStock } = useContext(StoreContext);
   const { t } = useContext(LanguageContext);
+  const { user } = useContext(AuthContext);
+  const canManageInventory = ['admin', 'manager', 'stock_manager'].includes(user?.role);
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [receiveForm, setReceiveForm] = useState({
@@ -85,7 +88,8 @@ export const Inventory = ({ activeFilter }) => {
 
     setSubmitting(true);
     try {
-      await receiveGoods(productId, quantity, landedCost);
+      const result = await receiveGoods(productId, quantity, landedCost);
+      if (!result?.success) throw new Error(result?.error || 'Could not receive stock.');
       setSuccessMsg('Stock received successfully.');
       setReceiveForm({ productId: '', quantity: '', landedCost: '' });
       setTimeout(() => {
@@ -145,14 +149,16 @@ export const Inventory = ({ activeFilter }) => {
             </p>
           )}
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button className="btn btn-secondary" onClick={() => openReceiveModal()}>
-            <ArrowDownToLine size={18} /> {t.receiveStock}
-          </button>
-          <button className="btn btn-ghost" onClick={() => openAdjustModal()}>
-            <ArrowUpFromLine size={18} /> {t.adjustStock}
-          </button>
-        </div>
+        {canManageInventory && (
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button className="btn btn-secondary" onClick={() => openReceiveModal()}>
+              <ArrowDownToLine size={18} /> {t.receiveStock}
+            </button>
+            <button className="btn btn-ghost" onClick={() => openAdjustModal()}>
+              <ArrowUpFromLine size={18} /> {t.adjustStock}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="card">
@@ -165,7 +171,7 @@ export const Inventory = ({ activeFilter }) => {
                 <th>{t.unitCost}</th>
                 <th>{t.qtyOnHand}</th>
                 <th>{t.totalValue}</th>
-                <th>{t.action}</th>
+                {canManageInventory && <th>{t.action}</th>}
               </tr>
             </thead>
             <tbody>
@@ -192,9 +198,11 @@ export const Inventory = ({ activeFilter }) => {
                   <td style={{ fontWeight: 600 }}>
                     {formatCurrency(item.costPrice * item.stock, settings)}
                   </td>
-                  <td>
-                    <button className="btn btn-ghost" style={{ padding: '0.25rem 0.5rem' }} onClick={() => openReceiveModal(item)}>{t.receive}</button>
-                  </td>
+                  {canManageInventory && (
+                    <td>
+                      <button className="btn btn-ghost" style={{ padding: '0.25rem 0.5rem' }} onClick={() => openReceiveModal(item)}>{t.receive}</button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

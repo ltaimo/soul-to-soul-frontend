@@ -20,14 +20,17 @@ import { formatCurrency } from '../utils/formatters';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 export const SalesInsights = () => {
-  const { products, settings, refreshData } = useContext(StoreContext);
+  const { products, customers, settings, refreshData } = useContext(StoreContext);
   const { token, logout, user } = useContext(AuthContext);
   const { language, t } = useContext(LanguageContext);
   const [salesRecord, setSalesRecord] = useState([]);
   const [query, setQuery] = useState('');
   const [cart, setCart] = useState([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [saveCustomer, setSaveCustomer] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [amountPaid, setAmountPaid] = useState('');
   const [lastReceipt, setLastReceipt] = useState(null);
@@ -101,13 +104,17 @@ export const SalesInsights = () => {
     { revenue: 0, cogs: 0, units: 0 }
   );
 
-  const grossProfit = totals.revenue - totals.cogs;
-  const margin = totals.revenue > 0 ? (grossProfit / totals.revenue) * 100 : 0;
+  const selectedCustomer = customers.find((customer) => customer.id === Number(selectedCustomerId));
+  const loyaltyDiscountRate = selectedCustomer?.discountPercent ? selectedCustomer.discountPercent / 100 : 0;
+  const discountAmount = totals.revenue * loyaltyDiscountRate;
+  const saleRevenue = Math.max(0, totals.revenue - discountAmount);
+  const grossProfit = saleRevenue - totals.cogs;
+  const margin = saleRevenue > 0 ? (grossProfit / saleRevenue) * 100 : 0;
   const hasStockIssue = cartLines.some((line) => line.hasStockIssue);
   const paidAmount = Number(amountPaid) || 0;
-  const effectivePaidAmount = paymentMethod === 'Cash' ? paidAmount : totals.revenue;
-  const changeGiven = Math.max(0, effectivePaidAmount - totals.revenue);
-  const hasPaymentIssue = paymentMethod === 'Cash' && cart.length > 0 && paidAmount < totals.revenue;
+  const effectivePaidAmount = paymentMethod === 'Cash' ? paidAmount : saleRevenue;
+  const changeGiven = Math.max(0, effectivePaidAmount - saleRevenue);
+  const hasPaymentIssue = paymentMethod === 'Cash' && cart.length > 0 && paidAmount < saleRevenue;
 
   const addToCart = (product) => {
     setErrorMsg('');
@@ -251,8 +258,11 @@ export const SalesInsights = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName: customerName || 'Retail Customer',
-          customerEmail,
+          customerId: selectedCustomerId ? Number(selectedCustomerId) : undefined,
+          customerName: selectedCustomer?.fullName || customerName || 'Retail Customer',
+          customerEmail: selectedCustomer?.email || customerEmail,
+          customerPhone: selectedCustomer?.phone || customerPhone,
+          saveCustomer: saveCustomer && !selectedCustomerId,
           paymentMethod,
           amountPaid: effectivePaidAmount,
           items: cart.map((line) => ({ productId: line.productId, quantity: line.quantity })),
@@ -267,8 +277,11 @@ export const SalesInsights = () => {
       setSuccessMsg(`Sale #${data.saleId} completed.`);
       setLastReceipt(data.sale);
       setCart([]);
+      setSelectedCustomerId('');
+      setSaveCustomer(false);
       setCustomerName('');
       setCustomerEmail('');
+      setCustomerPhone('');
       setAmountPaid('');
       await Promise.all([refreshData(), fetchSales()]);
     } catch (err) {
@@ -324,16 +337,57 @@ export const SalesInsights = () => {
           </div>
 
           <form onSubmit={handleSale}>
+            <div className="form-group">
+              <label className="form-label">Loyal Customer</label>
+              <select
+                className="form-input"
+                value={selectedCustomerId}
+                onChange={(event) => {
+                  const customer = customers.find((item) => item.id === Number(event.target.value));
+                  setSelectedCustomerId(event.target.value);
+                  if (customer) {
+                    setCustomerName(customer.fullName);
+                    setCustomerEmail(customer.email || '');
+                    setCustomerPhone(customer.phone || '');
+                    setSaveCustomer(false);
+                  }
+                }}
+              >
+                <option value="">Retail / new customer</option>
+                {customers.filter((customer) => customer.status !== 'Inactive').map((customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.fullName} {customer.discountPercent ? `- ${customer.discountPercent}%` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="payment-grid">
               <div className="form-group">
                 <label className="form-label">{t.customer}</label>
-                <input className="form-input" value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder={t.retailCustomer} />
+                <input className="form-input" value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder={t.retailCustomer} disabled={!!selectedCustomerId} />
               </div>
               <div className="form-group">
                 <label className="form-label">{t.customerEmail}</label>
-                <input type="email" className="form-input" value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} placeholder={t.receiptDraft} />
+                <input type="email" className="form-input" value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} placeholder={t.receiptDraft} disabled={!!selectedCustomerId} />
               </div>
             </div>
+            <div className="payment-grid">
+              <div className="form-group">
+                <label className="form-label">Customer Phone</label>
+                <input className="form-input" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} placeholder="Optional" disabled={!!selectedCustomerId} />
+              </div>
+              <label className="customer-save-toggle">
+                <input type="checkbox" checked={saveCustomer} onChange={(event) => setSaveCustomer(event.target.checked)} disabled={!!selectedCustomerId || !customerName} />
+                Save as loyal customer
+              </label>
+            </div>
+            {selectedCustomer && (
+              <div className="seller-chip">
+                Loyalty: <strong>{selectedCustomer.loyaltyTier}</strong>
+                {selectedCustomer.discountPercent > 0 && <span>{selectedCustomer.discountPercent}% discount applied</span>}
+              </div>
+            )}
             <div className="seller-chip">{t.seller}: <strong>{user?.fullName || user?.email}</strong></div>
 
             <div className="cart-lines">
@@ -360,10 +414,16 @@ export const SalesInsights = () => {
 
             <div className="pos-summary">
               <div><span>{t.units}</span><strong>{totals.units}</strong></div>
-              <div><span>{t.revenue}</span><strong>{formatCurrency(totals.revenue, settings)}</strong></div>
+              <div><span>{t.revenue}</span><strong>{formatCurrency(saleRevenue, settings)}</strong></div>
               <div><span>{t.grossProfit}</span><strong>{formatCurrency(grossProfit, settings)}</strong></div>
               <div><span>{t.margin}</span><strong>{margin.toFixed(1)}%</strong></div>
             </div>
+            {discountAmount > 0 && (
+              <div className="change-box">
+                <span>Loyalty discount</span>
+                <strong>-{formatCurrency(discountAmount, settings)}</strong>
+              </div>
+            )}
 
             <div className="payment-grid">
               <div className="form-group">
@@ -390,7 +450,7 @@ export const SalesInsights = () => {
                   min="0"
                   step="0.01"
                   className="form-input"
-                  value={paymentMethod === 'Cash' ? amountPaid : totals.revenue.toFixed(settings?.decimalFormatting ?? 2)}
+                  value={paymentMethod === 'Cash' ? amountPaid : saleRevenue.toFixed(settings?.decimalFormatting ?? 2)}
                   onChange={(event) => setAmountPaid(event.target.value)}
                   disabled={paymentMethod !== 'Cash'}
                 />
@@ -399,7 +459,7 @@ export const SalesInsights = () => {
 
             <div className={`change-box ${hasPaymentIssue ? 'change-box-error' : ''}`}>
               <span>{hasPaymentIssue ? t.remaining : t.change}</span>
-              <strong>{formatCurrency(hasPaymentIssue ? totals.revenue - paidAmount : changeGiven, settings)}</strong>
+              <strong>{formatCurrency(hasPaymentIssue ? saleRevenue - paidAmount : changeGiven, settings)}</strong>
             </div>
 
             <button className="btn btn-primary pos-submit" type="submit" disabled={submitting || cart.length === 0 || hasStockIssue || hasPaymentIssue}>

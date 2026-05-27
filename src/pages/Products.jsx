@@ -1,5 +1,6 @@
 import React, { useContext, useState } from 'react';
 import { StoreContext } from '../context/StoreContext';
+import { AuthContext } from '../context/AuthContext';
 import { Plus, X, Edit, Trash2 } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 
@@ -22,7 +23,10 @@ const initialFormData = {
 
 export const Products = () => {
   const { products, suppliers, settings, getMargin, createProduct, updateProduct, deactivateProduct } = useContext(StoreContext);
+  const { user } = useContext(AuthContext);
+  const canManageProducts = ['admin', 'manager', 'stock_manager'].includes(user?.role);
   const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All');
   
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -30,10 +34,14 @@ export const Products = () => {
   const [editId, setEditId] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    p.sku.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const categories = [...new Set(products.map((product) => product.category).filter(Boolean))].sort();
+
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      p.sku.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === 'All' || p.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
 
   const openCreate = () => {
     setFormData(initialFormData);
@@ -109,10 +117,12 @@ export const Products = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 className="page-title" style={{ marginBottom: 0 }}>Product Catalog</h1>
-        <button className="btn btn-primary" onClick={openCreate}>
-          <Plus size={18} />
-          New Product
-        </button>
+        {canManageProducts && (
+          <button className="btn btn-primary" onClick={openCreate}>
+            <Plus size={18} />
+            New Product
+          </button>
+        )}
       </div>
 
       <div className="card">
@@ -126,12 +136,11 @@ export const Products = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <select className="form-input" style={{ width: 'auto' }}>
-            <option>All Categories</option>
-            <option>Skincare</option>
-            <option>Haircare</option>
-            <option>Raw Material</option>
-            <option>Packaging</option>
+          <select className="form-input" style={{ width: 'auto' }} value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+            <option value="All">All Categories</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>{category}</option>
+            ))}
           </select>
         </div>
 
@@ -147,7 +156,7 @@ export const Products = () => {
                 <th>Selling Price</th>
                 <th>Margin</th>
                 <th>Status</th>
-                <th>Actions</th>
+                {canManageProducts && <th>Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -175,18 +184,20 @@ export const Products = () => {
                         {item.status}
                       </span>
                     </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                         <button className="btn btn-ghost" style={{ padding: '0.25rem 0.5rem' }} onClick={() => openEdit(item)}>
-                           <Edit size={16} />
-                         </button>
-                         {item.status === 'Active' && (
-                           <button className="btn btn-ghost" style={{ padding: '0.25rem 0.5rem', color: 'var(--color-danger)' }} onClick={() => handleDeactivate(item.id, item.status)}>
-                             <Trash2 size={16} />
+                    {canManageProducts && (
+                      <td>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                           <button className="btn btn-ghost" style={{ padding: '0.25rem 0.5rem' }} onClick={() => openEdit(item)}>
+                             <Edit size={16} />
                            </button>
-                         )}
-                      </div>
-                    </td>
+                           {item.status === 'Active' && (
+                             <button className="btn btn-ghost" style={{ padding: '0.25rem 0.5rem', color: 'var(--color-danger)' }} onClick={() => handleDeactivate(item.id, item.status)}>
+                               <Trash2 size={16} />
+                             </button>
+                           )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 )
               })}

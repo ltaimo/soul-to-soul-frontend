@@ -8,6 +8,7 @@ import { Products } from './pages/Products';
 import { Inventory } from './pages/Inventory';
 import { Purchasing } from './pages/Purchasing';
 import { Suppliers } from './pages/Suppliers';
+import { Customers } from './pages/Customers';
 import { Production } from './pages/Production';
 import { SalesInsights } from './pages/SalesInsights';
 import { Reports } from './pages/Reports';
@@ -61,6 +62,8 @@ function AppContent() {
         return <Purchasing activeFilter={activeFilter} />;
       case 'Suppliers':
         return <Suppliers activeFilter={activeFilter} />;
+      case 'Customers':
+        return <Customers activeFilter={activeFilter} />;
       case 'Production':
         return <Production activeFilter={activeFilter} />;
       case 'Sales / POS':

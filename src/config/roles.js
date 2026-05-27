@@ -2,25 +2,25 @@ export const ROLE_PROFILES = {
   admin: {
     label: 'Administrator',
     description: 'Full access to all modules, settings, users, and permissions.',
-    pages: ['Dashboard', 'Products', 'Inventory', 'Purchasing', 'Suppliers', 'Production', 'Sales / POS', 'Reporting', 'User Administration', 'Settings'],
+    pages: ['Dashboard', 'Products', 'Inventory', 'Purchasing', 'Suppliers', 'Customers', 'Production', 'Sales / POS', 'Reporting', 'User Administration', 'Settings'],
     privileges: ['Full system control', 'Manage users and roles', 'Manage settings', 'View financial reports'],
   },
   manager: {
     label: 'Manager',
     description: 'Operational manager with access to sales, stock, reports, and production.',
-    pages: ['Dashboard', 'Products', 'Inventory', 'Purchasing', 'Suppliers', 'Production', 'Sales / POS', 'Reporting'],
+    pages: ['Dashboard', 'Products', 'Inventory', 'Purchasing', 'Suppliers', 'Customers', 'Production', 'Sales / POS', 'Reporting'],
     privileges: ['View dashboard and reports', 'Manage products', 'Receive and adjust stock', 'Run sales and production'],
   },
   cashier: {
     label: 'Cashier',
     description: 'Point-of-sale access for checkout and receipt generation.',
-    pages: ['Sales / POS'],
+    pages: ['Customers', 'Sales / POS'],
     privileges: ['Create sales', 'Print or generate receipts', 'View recent sales'],
   },
   salesperson: {
     label: 'Salesperson',
     description: 'Sales desk profile with POS and product visibility.',
-    pages: ['Products', 'Sales / POS'],
+    pages: ['Products', 'Customers', 'Sales / POS'],
     privileges: ['Create sales', 'View products and prices', 'Generate receipts'],
   },
   stock_manager: {
@@ -38,13 +38,13 @@ export const ROLE_PROFILES = {
   viewer: {
     label: 'Viewer',
     description: 'Read-only access for basic review.',
-    pages: ['Dashboard', 'Products', 'Inventory'],
+    pages: ['Dashboard', 'Products', 'Inventory', 'Customers'],
     privileges: ['View operational dashboards', 'View products and stock'],
   },
   staff: {
     label: 'Staff',
     description: 'Legacy staff profile with basic sales access.',
-    pages: ['Products', 'Sales / POS'],
+    pages: ['Products', 'Customers', 'Sales / POS'],
     privileges: ['Create sales', 'View products and prices'],
   },
 };
