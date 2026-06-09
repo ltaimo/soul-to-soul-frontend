@@ -115,7 +115,7 @@ export const Products = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div className="page-header">
         <h1 className="page-title" style={{ marginBottom: 0 }}>Product Catalog</h1>
         {canManageProducts && (
           <button className="btn btn-primary" onClick={openCreate}>
@@ -126,7 +126,7 @@ export const Products = () => {
       </div>
 
       <div className="card">
-        <div style={{ display: 'flex', marginBottom: '1.5rem', gap: '1rem' }}>
+        <div className="toolbar-row">
           <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
             <input 
               type="text" 
@@ -136,7 +136,7 @@ export const Products = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <select className="form-input" style={{ width: 'auto' }} value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+          <select className="form-input toolbar-select" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
             <option value="All">All Categories</option>
             {categories.map((category) => (
               <option key={category} value={category}>{category}</option>
@@ -207,12 +207,12 @@ export const Products = () => {
       </div>
 
       {showModal && (
-        <div style={{
+        <div className="legacy-modal-backdrop" style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
           backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, 
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
-          <div className="card" style={{ width: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="card legacy-modal-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>{isEditing ? 'Edit Product' : 'Create New Product'}</h2>
               <button className="btn btn-ghost" onClick={() => setShowModal(false)}><X size={20} /></button>
@@ -225,7 +225,7 @@ export const Products = () => {
             )}
 
             <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-grid-2">
                 <div className="form-group">
                   <label>Product Name *</label>
                   <input type="text" className="form-input" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
@@ -300,7 +300,7 @@ export const Products = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
+              <div className="modal-actions" style={{ marginTop: '2rem' }}>
                 <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">{isEditing ? 'Save Changes' : 'Create Product'}</button>
               </div>

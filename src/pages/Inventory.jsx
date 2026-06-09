@@ -140,7 +140,7 @@ export const Inventory = ({ activeFilter }) => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div className="page-header">
         <div>
           <h1 className="page-title" style={{ marginBottom: '0.25rem' }}>{t.stockInventory}</h1>
           {activeFilter && (
@@ -150,7 +150,7 @@ export const Inventory = ({ activeFilter }) => {
           )}
         </div>
         {canManageInventory && (
-          <div style={{ display: 'flex', gap: '1rem' }}>
+          <div className="page-actions">
             <button className="btn btn-secondary" onClick={() => openReceiveModal()}>
               <ArrowDownToLine size={18} /> {t.receiveStock}
             </button>

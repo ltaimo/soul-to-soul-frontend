@@ -47,7 +47,7 @@ export const Dashboard = ({ setActivePage }) => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div className="page-header">
         <h1 className="page-title" style={{ marginBottom: 0 }}>Executive Dashboard</h1>
       </div>
 
@@ -81,7 +81,7 @@ export const Dashboard = ({ setActivePage }) => {
 
       {/* BI Charts Layer */}
       {canSeeFinancials && (
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+        <div className="dashboard-chart-grid">
           <div className="card">
             <h3 style={{ marginBottom: '1.5rem', fontWeight: '600' }}>Sales vs COGS Trend</h3>
             <div style={{ width: '100%', height: 300 }}>
@@ -126,7 +126,7 @@ export const Dashboard = ({ setActivePage }) => {
             <AlertCircle size={20} className="text-danger" /> Operational Intelligence
           </h3>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+          <div className="dashboard-alert-grid">
             <div 
               role="button"
               onClick={() => setActivePage ? setActivePage('Inventory', 'stock_out') : null}

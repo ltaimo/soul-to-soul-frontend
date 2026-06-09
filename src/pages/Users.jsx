@@ -144,7 +144,7 @@ export const Users = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div className="page-header">
         <h1 className="page-title" style={{ marginBottom: 0 }}>User Administration</h1>
         <button className="btn btn-primary" onClick={openCreate}>
           <Plus size={18} />
@@ -219,12 +219,12 @@ export const Users = () => {
       </div>
 
       {showModal && (
-        <div style={{
+        <div className="legacy-modal-backdrop" style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
           backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, 
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
-          <div className="card" style={{ width: '450px' }}>
+          <div className="card legacy-modal-card legacy-modal-card-sm">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>{isEditing ? 'Edit User' : 'Create System User'}</h2>
               <button className="btn btn-ghost" onClick={() => setShowModal(false)}><X size={20} /></button>
@@ -277,7 +277,7 @@ export const Users = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
+              <div className="modal-actions" style={{ marginTop: '2rem' }}>
                 <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">{isEditing ? 'Save Changes' : 'Create User'}</button>
               </div>

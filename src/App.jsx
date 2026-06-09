@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
+import { Menu } from 'lucide-react';
 import { StoreProvider } from './context/StoreContext';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { LanguageProvider, LanguageContext } from './context/LanguageContext';
@@ -22,10 +23,12 @@ function AppContent() {
   const { language } = useContext(LanguageContext);
   const [activePage, setActivePage] = useState('Dashboard');
   const [activeFilter, setActiveFilter] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navigateTo = (page, filter = null) => {
     setActivePage(page);
     setActiveFilter(filter);
+    setMobileMenuOpen(false);
   };
 
   useEffect(() => {
@@ -91,10 +94,31 @@ function AppContent() {
   return (
     <StoreProvider>
       <div className="app-layout">
-        <Sidebar activePage={activePage} setActivePage={navigateTo} />
-        <main className="main-content">
-          {renderContent()}
-        </main>
+        <Sidebar
+          activePage={activePage}
+          setActivePage={navigateTo}
+          mobileOpen={mobileMenuOpen}
+          closeMobile={() => setMobileMenuOpen(false)}
+        />
+        <div className="app-workspace">
+          <header className="mobile-app-bar">
+            <button
+              className="mobile-menu-button"
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open navigation"
+            >
+              <Menu size={22} />
+            </button>
+            <div>
+              <strong>{activePage}</strong>
+              <span>Soul to Soul ERP</span>
+            </div>
+          </header>
+          <main className="main-content">
+            {renderContent()}
+          </main>
+        </div>
       </div>
     </StoreProvider>
   );

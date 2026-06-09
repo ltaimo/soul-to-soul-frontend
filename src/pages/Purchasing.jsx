@@ -104,7 +104,7 @@ export const Purchasing = () => {
               </select>
             </div>
             
-            <div style={{ display: 'flex', gap: '1rem' }}>
+            <div className="form-grid-2">
               <div className="form-group" style={{ flex: 1 }}>
                 <label className="form-label">Quantity Received</label>
                 <input 

@@ -52,7 +52,7 @@ export const Settings = () => {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '2rem' }}>
+      <div className="settings-grid">
         <div className="card">
           <h2 style={{ fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--color-bg)', paddingBottom: '0.5rem' }}>
             <Building2 size={20} className="text-primary" />
@@ -75,7 +75,7 @@ export const Settings = () => {
             Financial Preferences
           </h2>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-grid-2">
             <div className="form-group">
               <label>Default Currency Code</label>
               <input type="text" className="form-input" placeholder="MZN" value={formData.defaultCurrency} onChange={e => setFormData({ ...formData, defaultCurrency: e.target.value })} />

@@ -136,7 +136,7 @@ export const Reports = () => {
     <div>
       <h1 className="page-title">Export & Intelligence Reports</h1>
       
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+      <div className="reports-grid">
         <div className="card">
           <h3 style={{ marginBottom: '1.5rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <FileSpreadsheet className="text-primary" size={24} /> Generate Excel (.xlsx) Reports

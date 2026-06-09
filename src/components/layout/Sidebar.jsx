@@ -1,12 +1,10 @@
 import React, { useContext } from 'react';
-import { LayoutDashboard, Box, Package, ShoppingCart, Users, RefreshCw, ReceiptText, FileSpreadsheet, Settings, Shield, LogOut, HeartHandshake } from 'lucide-react';
-import { StoreContext } from '../../context/StoreContext';
+import { LayoutDashboard, Box, Package, ShoppingCart, Users, RefreshCw, ReceiptText, FileSpreadsheet, Settings, Shield, LogOut, HeartHandshake, X } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import { LanguageContext } from '../../context/LanguageContext';
 import { canAccessPage, getRoleProfile } from '../../config/roles';
 
-export const Sidebar = ({ activePage, setActivePage }) => {
-  const { settings } = useContext(StoreContext);
+export const Sidebar = ({ activePage, setActivePage, mobileOpen = false, closeMobile }) => {
   const { user, logout } = useContext(AuthContext);
   const { language, setLanguage, t } = useContext(LanguageContext);
 
@@ -33,10 +31,20 @@ export const Sidebar = ({ activePage, setActivePage }) => {
   const roleProfile = getRoleProfile(user?.role);
 
   return (
-    <aside style={{ width: '260px', backgroundColor: 'var(--color-surface)', borderRight: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ padding: '1.5rem 1.25rem', borderBottom: '1px solid var(--color-border)' }}>
+    <>
+      <button
+        className={`sidebar-backdrop ${mobileOpen ? 'is-open' : ''}`}
+        type="button"
+        aria-label="Close navigation"
+        onClick={closeMobile}
+      />
+      <aside className={`app-sidebar ${mobileOpen ? 'is-open' : ''}`}>
+      <div className="sidebar-header">
+        <button className="sidebar-close" type="button" onClick={closeMobile} aria-label="Close navigation">
+          <X size={20} />
+        </button>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.6rem' }}>
-          <img src="/logo.png" alt="Soul to Soul" style={{ width: "150px", maxHeight: "120px", objectFit: "contain" }} />
+          <img className="sidebar-logo" src="/logo.png" alt="Soul to Soul" />
         </div>
         <p style={{ fontSize: '0.78rem', color: 'var(--color-charcoal-light)', textAlign: 'center' }}>{t.inventorySystem}</p>
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
@@ -46,7 +54,7 @@ export const Sidebar = ({ activePage, setActivePage }) => {
           </select>
         </div>
       </div>
-      <nav style={{ padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1, overflowY: 'auto' }}>
+      <nav className="sidebar-nav">
         {menuItems.map(item => (
           <button
             key={item.id}
@@ -66,7 +74,7 @@ export const Sidebar = ({ activePage, setActivePage }) => {
           </button>
         ))}
       </nav>
-      <div style={{ padding: '1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="sidebar-footer">
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-charcoal)' }}>{user?.fullName}</span>
           <span style={{ fontSize: '0.75rem', color: 'var(--color-charcoal-light)' }}>{roleProfile.label}</span>
@@ -75,6 +83,7 @@ export const Sidebar = ({ activePage, setActivePage }) => {
           <LogOut size={18} />
         </button>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 };
