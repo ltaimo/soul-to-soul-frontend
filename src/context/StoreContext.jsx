@@ -7,6 +7,10 @@ export const StoreProvider = ({ children }) => {
   const [products, setProducts] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [hrPayments, setHrPayments] = useState([]);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [hrSummary, setHrSummary] = useState(null);
   const [settings, setSettings] = useState({
     companyName: 'Soul to Soul ERP',
     defaultCurrency: 'MZN',
@@ -14,7 +18,9 @@ export const StoreProvider = ({ children }) => {
     decimalFormatting: 2
   });
   const [loading, setLoading] = useState(true);
-  const { token, logout } = useContext(AuthContext);
+  const { token, logout, user } = useContext(AuthContext);
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+  const canAccessHr = ['admin', 'manager'].includes(user?.role);
 
   const fetchWithAuth = async (url, options = {}) => {
     const headers = { ...options.headers };
@@ -32,10 +38,10 @@ export const StoreProvider = ({ children }) => {
   const fetchItems = async () => {
     try {
       const [prodRes, suppRes, customersRes, settingsRes] = await Promise.all([
-        fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/products`),
-        fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/suppliers`),
-        fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/customers`),
-        fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/settings`)
+        fetchWithAuth(`${apiBaseUrl}/api/products`),
+        fetchWithAuth(`${apiBaseUrl}/api/inventory/suppliers`),
+        fetchWithAuth(`${apiBaseUrl}/api/customers`),
+        fetchWithAuth(`${apiBaseUrl}/api/settings`)
       ]);
       const prods = await prodRes.json();
       const supps = await suppRes.json();
@@ -46,6 +52,24 @@ export const StoreProvider = ({ children }) => {
       setSuppliers(supps);
       setCustomers(custs);
       setSettings(stngs);
+
+      if (canAccessHr) {
+        const [employeesRes, paymentsRes, attendanceRes, summaryRes] = await Promise.all([
+          fetchWithAuth(`${apiBaseUrl}/api/hr/employees`),
+          fetchWithAuth(`${apiBaseUrl}/api/hr/payments`),
+          fetchWithAuth(`${apiBaseUrl}/api/hr/attendance`),
+          fetchWithAuth(`${apiBaseUrl}/api/hr/summary`)
+        ]);
+        setEmployees(await employeesRes.json());
+        setHrPayments(await paymentsRes.json());
+        setAttendanceRecords(await attendanceRes.json());
+        setHrSummary(await summaryRes.json());
+      } else {
+        setEmployees([]);
+        setHrPayments([]);
+        setAttendanceRecords([]);
+        setHrSummary(null);
+      }
     } catch (e) {
       console.error("Failed to fetch initial data", e);
     } finally {
@@ -55,7 +79,7 @@ export const StoreProvider = ({ children }) => {
 
   useEffect(() => {
     fetchItems();
-  }, []);
+  }, [token, user?.role]);
 
   const totalInventoryValue = products.reduce((acc, p) => acc + (p.costPrice * p.stock), 0);
   
@@ -69,7 +93,7 @@ export const StoreProvider = ({ children }) => {
     const supplierId = selectedSupplierId || (prod ? prod.supplierId : undefined);
 
     try {
-      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/receive`, {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/inventory/receive`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -93,7 +117,7 @@ export const StoreProvider = ({ children }) => {
 
   const adjustStock = async (productId, quantity, reference) => {
     try {
-      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/adjust`, {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/inventory/adjust`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -121,7 +145,7 @@ export const StoreProvider = ({ children }) => {
 
   const createProduct = async (data) => {
     try {
-      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/products`, {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -136,7 +160,7 @@ export const StoreProvider = ({ children }) => {
 
   const updateProduct = async (id, data) => {
     try {
-      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/products/${id}`, {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/products/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -151,7 +175,7 @@ export const StoreProvider = ({ children }) => {
 
   const deactivateProduct = async (id) => {
     try {
-      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/products/${id}/deactivate`, {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/products/${id}/deactivate`, {
         method: 'PATCH',
       });
       if (!response.ok) throw await response.json();
@@ -164,7 +188,7 @@ export const StoreProvider = ({ children }) => {
 
   const createSupplier = async (data) => {
     try {
-      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/suppliers`, {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/inventory/suppliers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -180,7 +204,7 @@ export const StoreProvider = ({ children }) => {
 
   const updateSupplier = async (id, data) => {
     try {
-      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/suppliers/${id}`, {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/inventory/suppliers/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -196,7 +220,7 @@ export const StoreProvider = ({ children }) => {
 
   const updateSupplierStatus = async (id, status) => {
     try {
-      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/suppliers/${id}/status`, {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/inventory/suppliers/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
@@ -212,7 +236,7 @@ export const StoreProvider = ({ children }) => {
 
   const createCustomer = async (data) => {
     try {
-      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/customers`, {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/customers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -228,7 +252,7 @@ export const StoreProvider = ({ children }) => {
 
   const updateCustomer = async (id, data) => {
     try {
-      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/customers/${id}`, {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/customers/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -244,7 +268,7 @@ export const StoreProvider = ({ children }) => {
 
   const updateCustomerStatus = async (id, status) => {
     try {
-      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/customers/${id}/status`, {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/customers/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
@@ -260,7 +284,7 @@ export const StoreProvider = ({ children }) => {
 
   const updateSettings = async (data) => {
     try {
-      const response = await fetchWithAuth(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/settings`, {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -273,6 +297,102 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
+  const createEmployee = async (data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/hr/employees`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true, employee: result.employee };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to create employee' };
+    }
+  };
+
+  const updateEmployee = async (id, data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/hr/employees/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to update employee' };
+    }
+  };
+
+  const updateEmployeeStatus = async (id, status) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/hr/employees/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to update employee status' };
+    }
+  };
+
+  const createHrPayment = async (data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/hr/payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to create payment' };
+    }
+  };
+
+  const updateHrPaymentStatus = async (id, data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/hr/payments/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to update payment' };
+    }
+  };
+
+  const upsertAttendance = async (data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/hr/attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to save attendance' };
+    }
+  };
+
   if (loading) return <div style={{padding: '2rem'}}>Loading Data from Database...</div>;
 
   return (
@@ -280,6 +400,10 @@ export const StoreProvider = ({ children }) => {
       products,
       suppliers, 
       customers,
+      employees,
+      hrPayments,
+      attendanceRecords,
+      hrSummary,
       settings,
       totalInventoryValue,
       getMargin,
@@ -295,6 +419,12 @@ export const StoreProvider = ({ children }) => {
       createCustomer,
       updateCustomer,
       updateCustomerStatus,
+      createEmployee,
+      updateEmployee,
+      updateEmployeeStatus,
+      createHrPayment,
+      updateHrPaymentStatus,
+      upsertAttendance,
       updateSettings,
       refreshData: fetchItems
     }}>

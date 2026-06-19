@@ -15,6 +15,7 @@ export const Sidebar = ({ activePage, setActivePage, mobileOpen = false, closeMo
     { id: 'Purchasing', name: t.purchasing, icon: <ShoppingCart size={20} /> },
     { id: 'Suppliers', name: t.suppliers, icon: <Users size={20} /> },
     { id: 'Customers', name: t.customers, icon: <HeartHandshake size={20} /> },
+    { id: 'Human Resources', name: t.humanResources, icon: <Users size={20} /> },
     { id: 'Production', name: t.production, icon: <RefreshCw size={20} /> },
     { id: 'Sales / POS', name: t.salesPos, icon: <ReceiptText size={20} /> },
     { id: 'Reporting', name: t.reporting, icon: <FileSpreadsheet size={20} /> }

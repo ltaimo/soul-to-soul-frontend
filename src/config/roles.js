@@ -2,14 +2,14 @@ export const ROLE_PROFILES = {
   admin: {
     label: 'Administrator',
     description: 'Full access to all modules, settings, users, and permissions.',
-    pages: ['Dashboard', 'Products', 'Inventory', 'Purchasing', 'Suppliers', 'Customers', 'Production', 'Sales / POS', 'Reporting', 'User Administration', 'Settings'],
+    pages: ['Dashboard', 'Products', 'Inventory', 'Purchasing', 'Suppliers', 'Customers', 'Human Resources', 'Production', 'Sales / POS', 'Reporting', 'User Administration', 'Settings'],
     privileges: ['Full system control', 'Manage users and roles', 'Manage settings', 'View financial reports'],
   },
   manager: {
     label: 'Manager',
     description: 'Operational manager with access to sales, stock, reports, and production.',
-    pages: ['Dashboard', 'Products', 'Inventory', 'Purchasing', 'Suppliers', 'Customers', 'Production', 'Sales / POS', 'Reporting'],
-    privileges: ['View dashboard and reports', 'Manage products', 'Receive and adjust stock', 'Run sales and production'],
+    pages: ['Dashboard', 'Products', 'Inventory', 'Purchasing', 'Suppliers', 'Customers', 'Human Resources', 'Production', 'Sales / POS', 'Reporting'],
+    privileges: ['View dashboard and reports', 'Manage products', 'Receive and adjust stock', 'Run sales, HR, and production'],
   },
   cashier: {
     label: 'Cashier',

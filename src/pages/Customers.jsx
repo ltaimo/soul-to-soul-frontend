@@ -1,5 +1,5 @@
 import React, { useContext, useMemo, useState } from 'react';
-import { CheckCircle2, Edit, Plus, Search, ToggleLeft, ToggleRight, X } from 'lucide-react';
+import { CheckCircle2, Edit, MessageCircle, Plus, Search, ToggleLeft, ToggleRight, X } from 'lucide-react';
 import { StoreContext } from '../context/StoreContext';
 import { AuthContext } from '../context/AuthContext';
 
@@ -11,6 +11,19 @@ const initialCustomerForm = {
   discountPercent: 0,
   notes: '',
   status: 'Active',
+};
+
+const normalizeWhatsAppNumber = (value) => {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length === 9 && digits.startsWith('8')) return `258${digits}`;
+  return digits;
+};
+
+const whatsappHref = (phone, message) => {
+  const number = normalizeWhatsAppNumber(phone);
+  if (!number) return '';
+  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 };
 
 export const Customers = () => {
@@ -126,6 +139,7 @@ export const Customers = () => {
                 <th>Discount</th>
                 <th>Sales</th>
                 <th>Status</th>
+                <th>WhatsApp</th>
                 {canManageCustomers && <th>Actions</th>}
               </tr>
             </thead>
@@ -143,6 +157,19 @@ export const Customers = () => {
                       {customer.status}
                     </span>
                   </td>
+                  <td>
+                    {customer.phone ? (
+                      <a
+                        className="btn btn-ghost compact-btn"
+                        href={whatsappHref(customer.phone, `Olá ${customer.fullName}, mensagem da Soul to Soul.`)}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Send WhatsApp"
+                      >
+                        <MessageCircle size={16} />
+                      </a>
+                    ) : '-'}
+                  </td>
                   {canManageCustomers && (
                     <td>
                       <div className="row-actions">
@@ -159,7 +186,7 @@ export const Customers = () => {
               ))}
               {filteredCustomers.length === 0 && (
                 <tr>
-                  <td colSpan={canManageCustomers ? 8 : 7} style={{ textAlign: 'center', padding: '2rem' }}>
+                  <td colSpan={canManageCustomers ? 9 : 8} style={{ textAlign: 'center', padding: '2rem' }}>
                     No customers found.
                   </td>
                 </tr>
