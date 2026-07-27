@@ -6,16 +6,35 @@ export const StoreContext = createContext();
 export const StoreProvider = ({ children }) => {
   const [products, setProducts] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
+  const [warehouses, setWarehouses] = useState([]);
+  const [warehouseStock, setWarehouseStock] = useState([]);
+  const [stockTransfers, setStockTransfers] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [hrPayments, setHrPayments] = useState([]);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [hrSummary, setHrSummary] = useState(null);
   const [settings, setSettings] = useState({
-    companyName: 'Soul to Soul ERP',
+    companyName: 'Soul2Soul',
     defaultCurrency: 'MZN',
     currencySymbol: 'MT',
-    decimalFormatting: 2
+    decimalFormatting: 2,
+    hrPaymentTypesOptions: ['Salary', 'Rent', 'Advance', 'Bonus', 'Transport', 'Utilities', 'Commission', 'Other'].map((label) => ({ label, active: true })),
+    paymentMethodsOptions: ['Cash', 'M-Pesa', 'E-Mola', 'Card', 'Bank Transfer'].map((label) => ({ label, active: true })),
+    warehouseTypesOptions: ['Warehouse', 'Shop', 'Storage', 'Transit'].map((label) => ({ label, active: true })),
+    productCategoriesOptions: ['Skincare', 'Haircare', 'Beard Care', 'Raw Material', 'Packaging'].map((label) => ({ label, active: true })),
+    productTypesOptions: ['Finished Good', 'Raw Material', 'Packaging'].map((label) => ({ label, active: true })),
+    productUnitsOptions: ['pcs', 'kg', 'g', 'l', 'ml', 'box'].map((label) => ({ label, active: true })),
+    attendanceStatusesOptions: ['Present', 'Absent', 'Late', 'Half Day', 'Leave'].map((label) => ({ label, active: true })),
+    payFrequenciesOptions: ['Monthly', 'Weekly', 'Daily', 'Hourly'].map((label) => ({ label, active: true })),
+    hrPaymentTypesList: ['Salary', 'Rent', 'Advance', 'Bonus', 'Transport', 'Utilities', 'Commission', 'Other'],
+    paymentMethodsList: ['Cash', 'M-Pesa', 'E-Mola', 'Card', 'Bank Transfer'],
+    warehouseTypesList: ['Warehouse', 'Shop', 'Storage', 'Transit'],
+    productCategoriesList: ['Skincare', 'Haircare', 'Beard Care', 'Raw Material', 'Packaging'],
+    productTypesList: ['Finished Good', 'Raw Material', 'Packaging'],
+    productUnitsList: ['pcs', 'kg', 'g', 'l', 'ml', 'box'],
+    attendanceStatusesList: ['Present', 'Absent', 'Late', 'Half Day', 'Leave'],
+    payFrequenciesList: ['Monthly', 'Weekly', 'Daily', 'Hourly']
   });
   const [loading, setLoading] = useState(true);
   const { token, logout, user } = useContext(AuthContext);
@@ -37,19 +56,28 @@ export const StoreProvider = ({ children }) => {
 
   const fetchItems = async () => {
     try {
-      const [prodRes, suppRes, customersRes, settingsRes] = await Promise.all([
+      const [prodRes, suppRes, warehousesRes, warehouseStockRes, transfersRes, customersRes, settingsRes] = await Promise.all([
         fetchWithAuth(`${apiBaseUrl}/api/products`),
         fetchWithAuth(`${apiBaseUrl}/api/inventory/suppliers`),
+        fetchWithAuth(`${apiBaseUrl}/api/inventory/warehouses`),
+        fetchWithAuth(`${apiBaseUrl}/api/inventory/warehouse-stock`),
+        fetchWithAuth(`${apiBaseUrl}/api/inventory/transfers`),
         fetchWithAuth(`${apiBaseUrl}/api/customers`),
         fetchWithAuth(`${apiBaseUrl}/api/settings`)
       ]);
       const prods = await prodRes.json();
       const supps = await suppRes.json();
+      const whs = await warehousesRes.json();
+      const whStock = await warehouseStockRes.json();
+      const transfers = await transfersRes.json();
       const custs = await customersRes.json();
       const stngs = await settingsRes.json();
       
       setProducts(prods);
       setSuppliers(supps);
+      setWarehouses(whs);
+      setWarehouseStock(whStock);
+      setStockTransfers(transfers);
       setCustomers(custs);
       setSettings(stngs);
 
@@ -88,7 +116,7 @@ export const StoreProvider = ({ children }) => {
     return (((selling - cost) / selling) * 100).toFixed(1);
   };
 
-  const receiveGoods = async (productId, receivedQty, landedCost, selectedSupplierId) => {
+  const receiveGoods = async (productId, receivedQty, landedCost, selectedSupplierId, warehouseId) => {
     const prod = products.find(p => p.id === productId);
     const supplierId = selectedSupplierId || (prod ? prod.supplierId : undefined);
 
@@ -100,7 +128,8 @@ export const StoreProvider = ({ children }) => {
           productId,
           quantity: receivedQty,
           landedCost: landedCost,
-          supplierId
+          supplierId,
+          warehouseId
         })
       });
       const data = await response.json();
@@ -115,7 +144,7 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
-  const adjustStock = async (productId, quantity, reference) => {
+  const adjustStock = async (productId, quantity, reference, warehouseId) => {
     try {
       const response = await fetchWithAuth(`${apiBaseUrl}/api/inventory/adjust`, {
         method: 'POST',
@@ -123,7 +152,8 @@ export const StoreProvider = ({ children }) => {
         body: JSON.stringify({
           productId,
           quantity,
-          reference
+          reference,
+          warehouseId
         })
       });
       const data = await response.json();
@@ -134,6 +164,110 @@ export const StoreProvider = ({ children }) => {
       return { success: true };
     } catch (e) {
       return { success: false, error: e.message || 'Failed to adjust stock' };
+    }
+  };
+
+  const createWarehouse = async (data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/inventory/warehouses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true, warehouse: result.warehouse };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to create warehouse' };
+    }
+  };
+
+  const updateWarehouse = async (id, data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/inventory/warehouses/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to update warehouse' };
+    }
+  };
+
+  const updateWarehouseStatus = async (id, status) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/inventory/warehouses/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to update warehouse status' };
+    }
+  };
+
+  const setWarehouseMinStock = async (warehouseId, productId, minStock) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/inventory/warehouses/${warehouseId}/products/${productId}/min-stock`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ minStock })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to update minimum stock' };
+    }
+  };
+
+  const createStockTransfer = async (data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/inventory/transfers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true, transfer: result.transfer };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to create stock transfer' };
+    }
+  };
+
+  const confirmStockTransfer = async (id) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/inventory/transfers/${id}/receive`, { method: 'PATCH' });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to confirm stock transfer' };
+    }
+  };
+
+  const cancelStockTransfer = async (id) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/inventory/transfers/${id}/cancel`, { method: 'PATCH' });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to cancel stock transfer' };
     }
   };
 
@@ -399,6 +533,9 @@ export const StoreProvider = ({ children }) => {
     <StoreContext.Provider value={{
       products,
       suppliers, 
+      warehouses,
+      warehouseStock,
+      stockTransfers,
       customers,
       employees,
       hrPayments,
@@ -409,6 +546,13 @@ export const StoreProvider = ({ children }) => {
       getMargin,
       receiveGoods,
       adjustStock,
+      createWarehouse,
+      updateWarehouse,
+      updateWarehouseStatus,
+      setWarehouseMinStock,
+      createStockTransfer,
+      confirmStockTransfer,
+      cancelStockTransfer,
       calculateProjectedWAC,
       createProduct,
       updateProduct,

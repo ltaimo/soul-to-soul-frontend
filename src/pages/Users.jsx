@@ -84,7 +84,7 @@ export const Users = () => {
         return;
       }
       fetchUsers();
-    } catch (e) {
+    } catch {
       alert("Failed to connect to the server.");
     }
   };

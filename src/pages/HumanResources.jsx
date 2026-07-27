@@ -78,6 +78,10 @@ export const HumanResources = () => {
     updateHrPaymentStatus,
     upsertAttendance,
   } = useContext(StoreContext);
+  const hrPaymentTypes = settings?.hrPaymentTypesList?.length ? settings.hrPaymentTypesList : ['Salary', 'Rent', 'Advance', 'Bonus', 'Transport', 'Other'];
+  const paymentMethods = settings?.paymentMethodsList?.length ? settings.paymentMethodsList : ['Cash', 'M-Pesa', 'E-Mola', 'Card', 'Bank Transfer'];
+  const attendanceStatuses = settings?.attendanceStatusesList?.length ? settings.attendanceStatusesList : ['Present', 'Absent', 'Late', 'Half Day', 'Leave'];
+  const payFrequencies = settings?.payFrequenciesList?.length ? settings.payFrequenciesList : ['Monthly', 'Weekly', 'Daily', 'Hourly'];
 
   const [activeTab, setActiveTab] = useState('employees');
   const [searchTerm, setSearchTerm] = useState('');
@@ -85,6 +89,7 @@ export const HumanResources = () => {
   const [employeeForm, setEmployeeForm] = useState(initialEmployeeForm);
   const [paymentForm, setPaymentForm] = useState(initialPaymentForm);
   const [attendanceForm, setAttendanceForm] = useState(initialAttendanceForm);
+  const [attendanceMonth, setAttendanceMonth] = useState(new Date().toISOString().slice(0, 7));
   const [editId, setEditId] = useState(null);
   const [statusMsg, setStatusMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -102,6 +107,47 @@ export const HumanResources = () => {
     const today = new Date().toISOString().slice(0, 10);
     return record.date?.slice(0, 10) === today;
   });
+
+  const monthDates = useMemo(() => {
+    const [year, month] = attendanceMonth.split('-').map(Number);
+    const days = new Date(year, month, 0).getDate();
+    return Array.from({ length: days }, (_, index) => {
+      const day = index + 1;
+      return `${attendanceMonth}-${String(day).padStart(2, '0')}`;
+    });
+  }, [attendanceMonth]);
+
+  const attendanceByEmployeeDate = useMemo(() => {
+    const map = new Map();
+    attendanceRecords.forEach((record) => {
+      map.set(`${record.employeeId}-${record.date?.slice(0, 10)}`, record);
+    });
+    return map;
+  }, [attendanceRecords]);
+
+  const markAttendanceQuick = async (employeeId, date, checked) => {
+    const result = await upsertAttendance({
+      employeeId,
+      date,
+      status: checked ? 'Present' : 'Absent',
+      checkIn: checked ? '08:00' : '',
+      checkOut: checked ? '17:00' : '',
+      notes: checked ? '' : 'Marked absent from monthly grid',
+    });
+    setStatusMsg(result.success ? 'Attendance updated.' : '');
+    setErrorMsg(result.success ? '' : result.error || 'Could not update attendance.');
+  };
+
+  const monthlySummaryFor = (employeeId) => {
+    const records = monthDates
+      .map((date) => attendanceByEmployeeDate.get(`${employeeId}-${date}`))
+      .filter(Boolean);
+    return {
+      present: records.filter((record) => record.status === 'Present').length,
+      absent: records.filter((record) => record.status === 'Absent').length,
+      late: records.filter((record) => record.status === 'Late').length,
+    };
+  };
 
   const openEmployeeModal = (employee = null) => {
     setErrorMsg('');
@@ -358,8 +404,60 @@ export const HumanResources = () => {
       {activeTab === 'attendance' && (
         <div className="card">
           <div className="section-heading">
-            <h3>Attendance</h3>
-            <button className="btn btn-primary" onClick={() => openAttendanceModal()}><Plus size={18} /> Mark Attendance</button>
+            <div>
+              <h3>Attendance</h3>
+              <span>Monthly checkbox grid for fast daily marking.</span>
+            </div>
+            <div className="row-actions">
+              <input className="form-input toolbar-select" type="month" value={attendanceMonth} onChange={(event) => setAttendanceMonth(event.target.value)} />
+              <button className="btn btn-primary" onClick={() => openAttendanceModal()}><Plus size={18} /> Detailed Mark</button>
+            </div>
+          </div>
+          <div className="attendance-grid-wrap">
+            <table className="attendance-grid">
+              <thead>
+                <tr>
+                  <th>Worker</th>
+                  {monthDates.map((date) => <th key={date}>{Number(date.slice(-2))}</th>)}
+                  <th>P</th>
+                  <th>A</th>
+                  <th>L</th>
+                </tr>
+              </thead>
+              <tbody>
+                {employees.map((employee) => {
+                  const summary = monthlySummaryFor(employee.id);
+                  return (
+                    <tr key={employee.id}>
+                      <td><strong>{employee.fullName}</strong><span className="table-muted">{employee.role || employee.department || '-'}</span></td>
+                      {monthDates.map((date) => {
+                        const record = attendanceByEmployeeDate.get(`${employee.id}-${date}`);
+                        const isPresent = record?.status === 'Present';
+                        return (
+                          <td key={date} className={record?.status === 'Late' ? 'attendance-late' : record?.status === 'Absent' ? 'attendance-absent' : ''}>
+                            <input
+                              type="checkbox"
+                              checked={isPresent}
+                              title={record?.status || 'Not marked'}
+                              onChange={(event) => markAttendanceQuick(employee.id, date, event.target.checked)}
+                            />
+                          </td>
+                        );
+                      })}
+                      <td>{summary.present}</td>
+                      <td>{summary.absent}</td>
+                      <td>{summary.late}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ marginTop: '1.5rem' }}>
+            <div className="section-heading">
+              <h3>Detailed Records</h3>
+              <span>Absences, late marks, notes and check-in/out details.</span>
+            </div>
           </div>
           <div className="table-container">
             <table>
@@ -439,10 +537,7 @@ export const HumanResources = () => {
                 <div className="form-group">
                   <label className="form-label">Pay Frequency</label>
                   <select className="form-input" value={employeeForm.payFrequency} onChange={(event) => setEmployeeForm({ ...employeeForm, payFrequency: event.target.value })}>
-                    <option value="Monthly">Monthly</option>
-                    <option value="Weekly">Weekly</option>
-                    <option value="Daily">Daily</option>
-                    <option value="Hourly">Hourly</option>
+                    {payFrequencies.map((frequency) => <option key={frequency} value={frequency}>{frequency}</option>)}
                   </select>
                 </div>
               </div>
@@ -499,12 +594,7 @@ export const HumanResources = () => {
                 <div className="form-group">
                   <label className="form-label">Type</label>
                   <select className="form-input" value={paymentForm.type} onChange={(event) => setPaymentForm({ ...paymentForm, type: event.target.value })}>
-                    <option value="Salary">Salary</option>
-                    <option value="Rent">Rent</option>
-                    <option value="Advance">Advance</option>
-                    <option value="Bonus">Bonus</option>
-                    <option value="Transport">Transport</option>
-                    <option value="Other">Other</option>
+                    {hrPaymentTypes.map((type) => <option key={type} value={type}>{type}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
@@ -532,7 +622,10 @@ export const HumanResources = () => {
               </div>
               <div className="form-group">
                 <label className="form-label">Method</label>
-                <input className="form-input" placeholder="Cash, M-Pesa, bank transfer..." value={paymentForm.method} onChange={(event) => setPaymentForm({ ...paymentForm, method: event.target.value })} />
+                <select className="form-input" value={paymentForm.method} onChange={(event) => setPaymentForm({ ...paymentForm, method: event.target.value })}>
+                  <option value="">Select payment method</option>
+                  {paymentMethods.map((method) => <option key={method} value={method}>{method}</option>)}
+                </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Notes</label>
@@ -574,11 +667,7 @@ export const HumanResources = () => {
                 <div className="form-group">
                   <label className="form-label">Status</label>
                   <select className="form-input" value={attendanceForm.status} onChange={(event) => setAttendanceForm({ ...attendanceForm, status: event.target.value })}>
-                    <option value="Present">Present</option>
-                    <option value="Absent">Absent</option>
-                    <option value="Late">Late</option>
-                    <option value="Half Day">Half Day</option>
-                    <option value="Leave">Leave</option>
+                    {attendanceStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
                   </select>
                 </div>
               </div>

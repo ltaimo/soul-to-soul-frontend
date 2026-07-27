@@ -8,8 +8,8 @@ export const ROLE_PROFILES = {
   manager: {
     label: 'Manager',
     description: 'Operational manager with access to sales, stock, reports, and production.',
-    pages: ['Dashboard', 'Products', 'Inventory', 'Purchasing', 'Suppliers', 'Customers', 'Human Resources', 'Production', 'Sales / POS', 'Reporting'],
-    privileges: ['View dashboard and reports', 'Manage products', 'Receive and adjust stock', 'Run sales, HR, and production'],
+    pages: ['Dashboard', 'Products', 'Inventory', 'Purchasing', 'Suppliers', 'Customers', 'Human Resources', 'Production', 'Sales / POS', 'Reporting', 'Settings'],
+    privileges: ['View dashboard and reports', 'Manage products', 'Receive and adjust stock', 'Run sales, HR, production, and settings'],
   },
   cashier: {
     label: 'Cashier',

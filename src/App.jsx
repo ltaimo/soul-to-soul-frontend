@@ -115,7 +115,7 @@ function AppContent() {
             </button>
             <div>
               <strong>{activePage}</strong>
-              <span>Soul to Soul ERP</span>
+              <span>Soul2Soul</span>
             </div>
           </header>
           <main className="main-content">

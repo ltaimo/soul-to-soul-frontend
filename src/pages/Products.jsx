@@ -13,6 +13,8 @@ const initialFormData = {
   costPrice: '',
   sellingPrice: '',
   minStock: 0,
+  loyaltyPointsEarned: 0,
+  redemptionPointsCost: 0,
   initialStock: 0,
   status: 'Active',
   brand: '',
@@ -34,7 +36,10 @@ export const Products = () => {
   const [editId, setEditId] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const categories = [...new Set(products.map((product) => product.category).filter(Boolean))].sort();
+  const configuredCategories = settings?.productCategoriesList?.length ? settings.productCategoriesList : ['Skincare', 'Haircare', 'Beard Care', 'Raw Material', 'Packaging'];
+  const configuredTypes = settings?.productTypesList?.length ? settings.productTypesList : ['Finished Good', 'Raw Material', 'Packaging'];
+  const configuredUnits = settings?.productUnitsList?.length ? settings.productUnitsList : ['pcs', 'kg', 'g', 'l', 'ml', 'box'];
+  const categories = [...new Set([...configuredCategories, ...products.map((product) => product.category).filter(Boolean)])].sort();
 
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -61,6 +66,8 @@ export const Products = () => {
       costPrice: prod.costPrice,
       sellingPrice: prod.sellingPrice || '',
       minStock: prod.minStock || 0,
+      loyaltyPointsEarned: prod.loyaltyPointsEarned || 0,
+      redemptionPointsCost: prod.redemptionPointsCost || 0,
       initialStock: 0, // Cannot edit initial stock
       status: prod.status,
       brand: prod.brand || '',
@@ -155,6 +162,7 @@ export const Products = () => {
                 <th>Cost Price</th>
                 <th>Selling Price</th>
                 <th>Margin</th>
+                <th>Loyalty</th>
                 <th>Status</th>
                 {canManageProducts && <th>Actions</th>}
               </tr>
@@ -178,6 +186,10 @@ export const Products = () => {
                     <td>{item.sellingPrice > 0 ? formatCurrency(item.sellingPrice, settings) : '-'}</td>
                     <td style={{ color: marginColor, fontWeight: margin > 0 ? 600 : 400 }}>
                       {margin > 0 ? `${margin}%` : 'N/A'}
+                    </td>
+                    <td>
+                      <span className="table-muted">Earn {item.loyaltyPointsEarned || 0}</span>
+                      <span className="table-muted">Redeem {item.redemptionPointsCost || 0}</span>
                     </td>
                     <td>
                       <span className={item.status === 'Active' ? 'badge badge-success' : 'badge badge-danger'}>
@@ -238,14 +250,14 @@ export const Products = () => {
                 <div className="form-group">
                   <label>Type *</label>
                   <select className="form-input" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
-                    <option value="Finished Good">Finished Good</option>
-                    <option value="Raw Material">Raw Material</option>
-                    <option value="Packaging">Packaging</option>
+                    {configuredTypes.map((type) => <option key={type} value={type}>{type}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
                   <label>Category *</label>
-                  <input type="text" className="form-input" required value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} />
+                  <select className="form-input" required value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                    {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+                  </select>
                 </div>
 
                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
@@ -269,11 +281,22 @@ export const Products = () => {
 
                 <div className="form-group">
                   <label>Unit of Measure *</label>
-                  <input type="text" className="form-input" placeholder="e.g. pcs, kg, ml" required value={formData.unit} onChange={e => setFormData({...formData, unit: e.target.value})} />
+                  <select className="form-input" required value={formData.unit} onChange={e => setFormData({...formData, unit: e.target.value})}>
+                    {configuredUnits.map((unit) => <option key={unit} value={unit}>{unit}</option>)}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Minimum Stock (Alert)</label>
                   <input type="number" className="form-input" value={formData.minStock} onChange={e => setFormData({...formData, minStock: e.target.value})} />
+                </div>
+
+                <div className="form-group">
+                  <label>Loyalty Points Earned</label>
+                  <input type="number" min="0" className="form-input" value={formData.loyaltyPointsEarned} onChange={e => setFormData({...formData, loyaltyPointsEarned: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label>Points Needed to Redeem</label>
+                  <input type="number" min="0" className="form-input" value={formData.redemptionPointsCost} onChange={e => setFormData({...formData, redemptionPointsCost: e.target.value})} />
                 </div>
 
                 {!isEditing && (

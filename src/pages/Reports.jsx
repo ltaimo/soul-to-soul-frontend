@@ -34,6 +34,7 @@ export const Reports = () => {
             'Date': new Date(s.date).toISOString().split('T')[0],
             'Customer': s.customerName || 'Retail',
             'Channel': s.channel,
+            'Warehouse': s.warehouseName || s.warehouse?.name || '',
             'Total Revenue': formatCurrency(s.totalRevenue, settings),
             'Total COGS': formatCurrency(s.totalCogs, settings),
             'Gross Profit': formatCurrency(s.totalRevenue - s.totalCogs, settings),
@@ -48,6 +49,7 @@ export const Reports = () => {
           'Date': '',
           'Customer': '',
           'Channel': '',
+          'Warehouse': '',
           'Total Revenue': formatCurrency(sumRev, settings),
           'Total COGS': formatCurrency(sumCogs, settings),
           'Gross Profit': formatCurrency(sumRev - sumCogs, settings),
@@ -88,6 +90,46 @@ export const Reports = () => {
         });
       }
 
+      if (reportType === 'Warehouse Inventory') {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/warehouse-stock`, fetchOptions);
+        if (res.status === 401) return logout();
+        const raw = await res.json();
+        let totalVal = 0;
+
+        data = raw.map(row => {
+          const val = row.quantity * row.product.costPrice;
+          totalVal += val;
+          return {
+            'Warehouse': row.warehouse.name,
+            'Warehouse Type': row.warehouse.type,
+            'SKU': row.product.sku,
+            'Product Name': row.product.name,
+            'Category': row.product.category,
+            'Current Stock': row.quantity,
+            'Minimum Stock': row.minStock,
+            'Difference': row.quantity - row.minStock,
+            'Status': row.stockStatus,
+            'Unit Cost (WAC)': formatCurrency(row.product.costPrice, settings),
+            'Inventory Value': formatCurrency(val, settings)
+          };
+        });
+
+        data.push({});
+        data.push({
+          'Warehouse': 'TOTAL VALUATION',
+          'Warehouse Type': '',
+          'SKU': '',
+          'Product Name': '',
+          'Category': '',
+          'Current Stock': '',
+          'Minimum Stock': '',
+          'Difference': '',
+          'Status': '',
+          'Unit Cost (WAC)': '',
+          'Inventory Value': formatCurrency(totalVal, settings)
+        });
+      }
+
       if (data.length === 0) {
         alert("No data available for this report.");
         setDownloading(false);
@@ -104,6 +146,7 @@ export const Reports = () => {
           { wch: 15 }, // Date
           { wch: 25 }, // Customer
           { wch: 15 }, // Channel
+          { wch: 24 }, // Warehouse
           { wch: 20 }, // Total Revenue
           { wch: 20 }, // Total COGS
           { wch: 20 }, // Gross Profit
@@ -118,6 +161,20 @@ export const Reports = () => {
           { wch: 15 }, // Current Stock
           { wch: 20 }, // Unit Cost
           { wch: 25 }  // Total Inventory Value
+        ];
+      } else if (reportType === 'Warehouse Inventory') {
+        worksheet['!cols'] = [
+          { wch: 26 },
+          { wch: 16 },
+          { wch: 20 },
+          { wch: 35 },
+          { wch: 20 },
+          { wch: 15 },
+          { wch: 15 },
+          { wch: 12 },
+          { wch: 16 },
+          { wch: 20 },
+          { wch: 20 }
         ];
       }
 
@@ -152,7 +209,12 @@ export const Reports = () => {
             </button>
 
             <button className="btn" onClick={() => downloadExcel('Inventory')} disabled={downloading} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem' }}>
-              <span style={{ fontWeight: 600 }}>Inventory Valuation & Location Map</span>
+              <span style={{ fontWeight: 600 }}>Consolidated Inventory Valuation</span>
+              <Download size={18} />
+            </button>
+
+            <button className="btn" onClick={() => downloadExcel('Warehouse Inventory')} disabled={downloading} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem' }}>
+              <span style={{ fontWeight: 600 }}>Warehouse Inventory & Location Map</span>
               <Download size={18} />
             </button>
           </div>

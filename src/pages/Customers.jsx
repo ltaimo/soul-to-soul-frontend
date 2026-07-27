@@ -7,8 +7,10 @@ const initialCustomerForm = {
   fullName: '',
   phone: '',
   email: '',
+  customerCode: '',
   loyaltyTier: 'Standard',
   discountPercent: 0,
+  loyaltyPoints: 0,
   notes: '',
   status: 'Active',
 };
@@ -60,8 +62,10 @@ export const Customers = () => {
       fullName: customer.fullName,
       phone: customer.phone || '',
       email: customer.email || '',
+      customerCode: customer.customerCode || '',
       loyaltyTier: customer.loyaltyTier || 'Standard',
       discountPercent: customer.discountPercent || 0,
+      loyaltyPoints: customer.loyaltyPoints || 0,
       notes: customer.notes || '',
       status: customer.status || 'Active',
     });
@@ -105,8 +109,8 @@ export const Customers = () => {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title" style={{ marginBottom: '0.35rem' }}>Loyal Customers</h1>
-          <p className="page-subtitle">Manage loyal customers, discounts, and purchase relationships.</p>
+          <h1 className="page-title" style={{ marginBottom: '0.35rem' }}>Loyalty</h1>
+          <p className="page-subtitle">Manage customer codes, points, discounts, WhatsApp contact and redemption readiness.</p>
         </div>
         {canCreateCustomers && (
           <button className="btn btn-primary" onClick={openCreate}>
@@ -133,9 +137,11 @@ export const Customers = () => {
             <thead>
               <tr>
                 <th>Customer</th>
+                <th>Code</th>
                 <th>Phone</th>
                 <th>Email</th>
                 <th>Tier</th>
+                <th>Points</th>
                 <th>Discount</th>
                 <th>Sales</th>
                 <th>Status</th>
@@ -147,9 +153,11 @@ export const Customers = () => {
               {filteredCustomers.map((customer) => (
                 <tr key={customer.id}>
                   <td style={{ fontWeight: 600 }}>{customer.fullName}</td>
+                  <td><span className="badge badge-primary">{customer.customerCode || `CUST-${String(customer.id).padStart(5, '0')}`}</span></td>
                   <td>{customer.phone || '-'}</td>
                   <td>{customer.email || '-'}</td>
                   <td><span className="badge badge-primary">{customer.loyaltyTier}</span></td>
+                  <td style={{ fontWeight: 700 }}>{customer.loyaltyPoints || 0}</td>
                   <td>{customer.discountPercent || 0}%</td>
                   <td>{customer._count?.sales || 0}</td>
                   <td>
@@ -186,7 +194,7 @@ export const Customers = () => {
               ))}
               {filteredCustomers.length === 0 && (
                 <tr>
-                  <td colSpan={canManageCustomers ? 9 : 8} style={{ textAlign: 'center', padding: '2rem' }}>
+                  <td colSpan={canManageCustomers ? 11 : 10} style={{ textAlign: 'center', padding: '2rem' }}>
                     No customers found.
                   </td>
                 </tr>
@@ -202,7 +210,7 @@ export const Customers = () => {
             <div className="modal-header">
               <div>
                 <h2>{isEditing ? 'Edit Customer' : 'Add Customer'}</h2>
-                <p>Set contact details and loyalty discount.</p>
+                <p>Set contact details, loyalty code, points and discount.</p>
               </div>
               <button className="icon-button" onClick={() => setShowModal(false)}><X size={20} /></button>
             </div>
@@ -223,6 +231,17 @@ export const Customers = () => {
                 <div className="form-group">
                   <label className="form-label">Email</label>
                   <input type="email" className="form-input" value={formData.email} onChange={(event) => setFormData({ ...formData, email: event.target.value })} />
+                </div>
+              </div>
+
+              <div className="receive-grid">
+                <div className="form-group">
+                  <label className="form-label">Customer Code / QR Code Text</label>
+                  <input className="form-input" placeholder="Auto-generated if empty" value={formData.customerCode} onChange={(event) => setFormData({ ...formData, customerCode: event.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Current Points</label>
+                  <input type="number" min="0" className="form-input" value={formData.loyaltyPoints} onChange={(event) => setFormData({ ...formData, loyaltyPoints: event.target.value })} disabled={!canManageCustomers} />
                 </div>
               </div>
 

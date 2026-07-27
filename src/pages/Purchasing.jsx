@@ -3,10 +3,11 @@ import { StoreContext } from '../context/StoreContext';
 import { AlertTriangle, ArrowDownToLine, CheckCircle2 } from 'lucide-react';
 
 export const Purchasing = () => {
-  const { products, suppliers, receiveGoods, calculateProjectedWAC, getMargin } = useContext(StoreContext);
+  const { products, suppliers, warehouses, receiveGoods, calculateProjectedWAC, getMargin } = useContext(StoreContext);
   
   const [selectedProductId, setSelectedProductId] = useState('');
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
   const [receivedQty, setReceivedQty] = useState('');
   const [landedCost, setLandedCost] = useState('');
   const [successMsg, setSuccessMsg] = useState(false);
@@ -14,18 +15,21 @@ export const Purchasing = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const selectedProduct = products.find(p => p.id === Number(selectedProductId));
+  const activeWarehouses = warehouses.filter((warehouse) => warehouse.status !== 'Inactive');
+  const defaultWarehouseId = activeWarehouses.find((warehouse) => warehouse.isDefault)?.id || activeWarehouses[0]?.id || '';
   
   const handleReceive = async (e) => {
     e.preventDefault();
     setErrorMsg('');
-    if (!selectedProductId || !receivedQty || !landedCost) return;
+    if (!selectedProductId || !receivedQty || !landedCost || !(selectedWarehouseId || defaultWarehouseId)) return;
 
     setSubmitting(true);
     const result = await receiveGoods(
       Number(selectedProductId),
       Number(receivedQty),
       Number(landedCost),
-      selectedSupplierId ? Number(selectedSupplierId) : undefined
+      selectedSupplierId ? Number(selectedSupplierId) : undefined,
+      Number(selectedWarehouseId || defaultWarehouseId)
     );
     setSubmitting(false);
 
@@ -39,6 +43,7 @@ export const Purchasing = () => {
       setSuccessMsg(false);
       setSelectedProductId('');
       setSelectedSupplierId('');
+      setSelectedWarehouseId('');
       setReceivedQty('');
       setLandedCost('');
     }, 2500);
@@ -100,6 +105,21 @@ export const Purchasing = () => {
                 <option value="">Use product supplier / no supplier</option>
                 {suppliers.filter((supplier) => supplier.status !== 'Inactive').map((supplier) => (
                   <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Destination Warehouse</label>
+              <select
+                className="form-input"
+                value={selectedWarehouseId || defaultWarehouseId}
+                onChange={(e) => setSelectedWarehouseId(e.target.value)}
+                required
+              >
+                <option value="">-- Select Warehouse --</option>
+                {activeWarehouses.map((warehouse) => (
+                  <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>
                 ))}
               </select>
             </div>

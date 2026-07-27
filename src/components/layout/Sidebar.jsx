@@ -23,11 +23,16 @@ export const Sidebar = ({ activePage, setActivePage, mobileOpen = false, closeMo
 
   const adminMenuItems = [
     { id: 'User Administration', name: t.users, icon: <Shield size={20} /> },
+  ];
+
+  const settingsMenuItems = [
     { id: 'Settings', name: t.settings, icon: <Settings size={20} /> },
   ];
 
-  const menuItems = user?.role === 'admin' 
-    ? [...baseMenuItems, ...adminMenuItems] 
+  const menuItems = user?.role === 'admin'
+    ? [...baseMenuItems, ...adminMenuItems, ...settingsMenuItems]
+    : user?.role === 'manager'
+      ? [...baseMenuItems.filter((item) => canAccessPage(user?.role, item.id)), ...settingsMenuItems]
     : baseMenuItems.filter((item) => canAccessPage(user?.role, item.id));
   const roleProfile = getRoleProfile(user?.role);
 

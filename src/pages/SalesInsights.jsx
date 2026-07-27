@@ -20,23 +20,29 @@ import { formatCurrency } from '../utils/formatters';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 export const SalesInsights = () => {
-  const { products, customers, settings, refreshData } = useContext(StoreContext);
+  const { products, customers, warehouses, warehouseStock, settings, refreshData } = useContext(StoreContext);
   const { token, logout, user } = useContext(AuthContext);
   const { language, t } = useContext(LanguageContext);
   const [salesRecord, setSalesRecord] = useState([]);
   const [query, setQuery] = useState('');
   const [cart, setCart] = useState([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [customerCodeSearch, setCustomerCodeSearch] = useState('');
   const [saveCustomer, setSaveCustomer] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
   const [amountPaid, setAmountPaid] = useState('');
   const [lastReceipt, setLastReceipt] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const activeWarehouses = warehouses.filter((warehouse) => warehouse.status !== 'Inactive');
+  const defaultWarehouseId = activeWarehouses.find((warehouse) => warehouse.isDefault)?.id || activeWarehouses[0]?.id || '';
+  const fulfillmentWarehouseId = Number(selectedWarehouseId || defaultWarehouseId);
+  const paymentMethods = settings?.paymentMethodsList?.length ? settings.paymentMethodsList : ['Cash', 'M-Pesa', 'E-Mola', 'Card', 'Bank Transfer'];
 
   const fetchWithAuth = async (url, options = {}) => {
     const headers = { ...options.headers, Authorization: `Bearer ${token}` };
@@ -67,6 +73,11 @@ export const SalesInsights = () => {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [products]);
 
+  const availableInWarehouse = (productId) => {
+    const row = warehouseStock.find((stock) => stock.productId === productId && stock.warehouseId === fulfillmentWarehouseId);
+    return row?.quantity ?? 0;
+  };
+
   const filteredProducts = useMemo(() => {
     const term = query.trim().toLowerCase();
     const source = term
@@ -81,33 +92,40 @@ export const SalesInsights = () => {
   const cartLines = useMemo(() => {
     return cart.map((line) => {
       const product = products.find((item) => item.id === line.productId);
-      const available = product?.stock || 0;
+      const available = product ? availableInWarehouse(product.id) : 0;
       const revenue = (product?.sellingPrice || 0) * line.quantity;
       const cogs = (product?.costPrice || 0) * line.quantity;
+      const pointsEarned = (product?.loyaltyPointsEarned || 0) * line.quantity;
+      const redemptionPointsCost = (product?.redemptionPointsCost || 0) * line.quantity;
       return {
         ...line,
         product,
         available,
         revenue,
         cogs,
+        pointsEarned,
+        redemptionPointsCost,
         hasStockIssue: !product || line.quantity > available,
       };
     });
-  }, [cart, products]);
+  }, [cart, products, warehouseStock, fulfillmentWarehouseId]);
 
   const totals = cartLines.reduce(
     (acc, line) => ({
       revenue: acc.revenue + line.revenue,
       cogs: acc.cogs + line.cogs,
       units: acc.units + line.quantity,
+      pointsEarned: acc.pointsEarned + line.pointsEarned,
+      redemptionPointsCost: acc.redemptionPointsCost + line.redemptionPointsCost,
     }),
-    { revenue: 0, cogs: 0, units: 0 }
+    { revenue: 0, cogs: 0, units: 0, pointsEarned: 0, redemptionPointsCost: 0 }
   );
 
   const selectedCustomer = customers.find((customer) => customer.id === Number(selectedCustomerId));
   const loyaltyDiscountRate = selectedCustomer?.discountPercent ? selectedCustomer.discountPercent / 100 : 0;
   const discountAmount = totals.revenue * loyaltyDiscountRate;
-  const saleRevenue = Math.max(0, totals.revenue - discountAmount);
+  const payingWithPoints = paymentMethod === 'Points';
+  const saleRevenue = payingWithPoints ? 0 : Math.max(0, totals.revenue - discountAmount);
   const grossProfit = saleRevenue - totals.cogs;
   const margin = saleRevenue > 0 ? (grossProfit / saleRevenue) * 100 : 0;
   const hasStockIssue = cartLines.some((line) => line.hasStockIssue);
@@ -115,11 +133,33 @@ export const SalesInsights = () => {
   const effectivePaidAmount = paymentMethod === 'Cash' ? paidAmount : saleRevenue;
   const changeGiven = Math.max(0, effectivePaidAmount - saleRevenue);
   const hasPaymentIssue = paymentMethod === 'Cash' && cart.length > 0 && paidAmount < saleRevenue;
+  const hasPointsIssue = payingWithPoints && (!selectedCustomer || totals.redemptionPointsCost <= 0 || (selectedCustomer.loyaltyPoints || 0) < totals.redemptionPointsCost);
+
+  const findCustomerByCode = () => {
+    const query = customerCodeSearch.trim().toLowerCase();
+    if (!query) return;
+    const customer = customers.find((item) =>
+      [item.customerCode, item.phone, item.email, item.fullName]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase() === query)
+    );
+    if (!customer) {
+      setErrorMsg('Customer code not found.');
+      return;
+    }
+    setSelectedCustomerId(String(customer.id));
+    setCustomerName(customer.fullName);
+    setCustomerEmail(customer.email || '');
+    setCustomerPhone(customer.phone || '');
+    setSaveCustomer(false);
+    setErrorMsg('');
+  };
 
   const addToCart = (product) => {
     setErrorMsg('');
-    if (product.stock <= 0) {
-      setErrorMsg(`${product.name} is out of stock.`);
+    const available = availableInWarehouse(product.id);
+    if (available <= 0) {
+      setErrorMsg(`${product.name} is out of stock in the selected warehouse.`);
       return;
     }
 
@@ -128,7 +168,7 @@ export const SalesInsights = () => {
       if (existing) {
         return current.map((line) =>
           line.productId === product.id
-            ? { ...line, quantity: Math.min(line.quantity + 1, product.stock) }
+            ? { ...line, quantity: Math.min(line.quantity + 1, available) }
             : line
         );
       }
@@ -161,7 +201,7 @@ export const SalesInsights = () => {
       .join('\n');
 
     return [
-      'Soul to Soul',
+      settings?.companyName || 'Soul2Soul',
       `Receipt #${sale.id}`,
       `Date: ${new Date(sale.date).toLocaleString()}`,
       `${t.customer}: ${sale.customerName || t.retailCustomer}`,
@@ -206,7 +246,7 @@ export const SalesInsights = () => {
         </head>
         <body>
           <img src="/logo.png" alt="Soul to Soul" />
-          <h1>Receipt #${sale.id}</h1>
+          <h1>${settings?.companyName || 'Soul2Soul'} - Receipt #${sale.id}</h1>
           <p><strong>Date:</strong> ${new Date(sale.date).toLocaleString()}</p>
           <p><strong>${t.customer}:</strong> ${sale.customerName || t.retailCustomer}</p>
           <p><strong>${t.seller}:</strong> ${sale.sellerName || user?.fullName || user?.email || ''}</p>
@@ -243,12 +283,20 @@ export const SalesInsights = () => {
       setErrorMsg('Add at least one product to the cart.');
       return;
     }
+    if (!fulfillmentWarehouseId) {
+      setErrorMsg('Select a warehouse before completing the sale.');
+      return;
+    }
     if (hasStockIssue) {
       setErrorMsg('Review cart quantities. One or more products exceed available stock.');
       return;
     }
     if (hasPaymentIssue) {
       setErrorMsg('Amount paid is lower than the sale total.');
+      return;
+    }
+    if (hasPointsIssue) {
+      setErrorMsg('Customer does not have enough points, or selected products are not configured for redemption.');
       return;
     }
 
@@ -262,9 +310,12 @@ export const SalesInsights = () => {
           customerName: selectedCustomer?.fullName || customerName || 'Retail Customer',
           customerEmail: selectedCustomer?.email || customerEmail,
           customerPhone: selectedCustomer?.phone || customerPhone,
+          customerCode: selectedCustomer?.customerCode || customerCodeSearch,
           saveCustomer: saveCustomer && !selectedCustomerId,
           paymentMethod,
           amountPaid: effectivePaidAmount,
+          redeemPoints: payingWithPoints,
+          warehouseId: fulfillmentWarehouseId,
           items: cart.map((line) => ({ productId: line.productId, quantity: line.quantity })),
         }),
       });
@@ -278,11 +329,13 @@ export const SalesInsights = () => {
       setLastReceipt(data.sale);
       setCart([]);
       setSelectedCustomerId('');
+      setCustomerCodeSearch('');
       setSaveCustomer(false);
       setCustomerName('');
       setCustomerEmail('');
       setCustomerPhone('');
       setAmountPaid('');
+      setSelectedWarehouseId('');
       await Promise.all([refreshData(), fetchSales()]);
     } catch (err) {
       setErrorMsg(err.message || 'Network error communicating with the backend.');
@@ -309,6 +362,23 @@ export const SalesInsights = () => {
             <h3>{t.products}</h3>
             <span>{saleableProducts.length} {t.productsCount}</span>
           </div>
+          <div className="form-group">
+            <label className="form-label">Fulfillment Warehouse</label>
+            <select
+              className="form-input"
+              value={selectedWarehouseId || defaultWarehouseId}
+              onChange={(event) => {
+                setSelectedWarehouseId(event.target.value);
+                setCart([]);
+              }}
+              required
+            >
+              <option value="">Select warehouse</option>
+              {activeWarehouses.map((warehouse) => (
+                <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>
+              ))}
+            </select>
+          </div>
           <div className="search-input">
             <Search size={18} />
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.searchProducts} />
@@ -323,7 +393,7 @@ export const SalesInsights = () => {
                 </div>
                 <div>
                   <strong>{formatCurrency(product.sellingPrice, settings)}</strong>
-                  <span className={product.stock <= 0 ? 'stock-bad' : 'stock-good'}>{product.stock} in stock</span>
+                  <span className={availableInWarehouse(product.id) <= 0 ? 'stock-bad' : 'stock-good'}>{availableInWarehouse(product.id)} in selected warehouse</span>
                 </div>
               </button>
             ))}
@@ -356,10 +426,20 @@ export const SalesInsights = () => {
                 <option value="">Retail / new customer</option>
                 {customers.filter((customer) => customer.status !== 'Inactive').map((customer) => (
                   <option key={customer.id} value={customer.id}>
-                    {customer.fullName} {customer.discountPercent ? `- ${customer.discountPercent}%` : ''}
+                    {customer.fullName} | {customer.customerCode || `CUST-${String(customer.id).padStart(5, '0')}`} | {customer.loyaltyPoints || 0} pts
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="payment-grid">
+              <div className="form-group">
+                <label className="form-label">Customer Code / QR</label>
+                <input className="form-input" value={customerCodeSearch} onChange={(event) => setCustomerCodeSearch(event.target.value)} placeholder="Scan or type customer code" />
+              </div>
+              <div className="form-group" style={{ display: 'flex', alignItems: 'end' }}>
+                <button type="button" className="btn btn-secondary" style={{ width: '100%' }} onClick={findCustomerByCode}>Find Customer</button>
+              </div>
             </div>
 
             <div className="payment-grid">
@@ -385,10 +465,12 @@ export const SalesInsights = () => {
             {selectedCustomer && (
               <div className="seller-chip">
                 Loyalty: <strong>{selectedCustomer.loyaltyTier}</strong>
+                <span>{selectedCustomer.loyaltyPoints || 0} points available</span>
                 {selectedCustomer.discountPercent > 0 && <span>{selectedCustomer.discountPercent}% discount applied</span>}
               </div>
             )}
             <div className="seller-chip">{t.seller}: <strong>{user?.fullName || user?.email}</strong></div>
+            <div className="seller-chip">Warehouse: <strong>{activeWarehouses.find((warehouse) => warehouse.id === fulfillmentWarehouseId)?.name || '-'}</strong></div>
 
             <div className="cart-lines">
               {cartLines.length === 0 ? (
@@ -398,7 +480,7 @@ export const SalesInsights = () => {
                   <div className={`cart-line ${line.hasStockIssue ? 'cart-line-error' : ''}`} key={line.productId}>
                     <div className="cart-line-main">
                       <strong>{line.product?.name || 'Unknown product'}</strong>
-                      <span>{formatCurrency(line.product?.sellingPrice || 0, settings)} - Available: {line.available}</span>
+                      <span>{formatCurrency(line.product?.sellingPrice || 0, settings)} - Available: {line.available} - Earn {line.pointsEarned} pts - Redeem {line.redemptionPointsCost} pts</span>
                     </div>
                     <div className="cart-qty">
                       <button type="button" onClick={() => updateQty(line.productId, line.quantity - 1)}><Minus size={14} /></button>
@@ -418,6 +500,10 @@ export const SalesInsights = () => {
               <div><span>{t.grossProfit}</span><strong>{formatCurrency(grossProfit, settings)}</strong></div>
               <div><span>{t.margin}</span><strong>{margin.toFixed(1)}%</strong></div>
             </div>
+            <div className={`change-box ${hasPointsIssue ? 'change-box-error' : ''}`}>
+              <span>{payingWithPoints ? 'Points needed' : 'Points to earn'}</span>
+              <strong>{payingWithPoints ? totals.redemptionPointsCost : totals.pointsEarned} pts</strong>
+            </div>
             {discountAmount > 0 && (
               <div className="change-box">
                 <span>Loyalty discount</span>
@@ -433,15 +519,12 @@ export const SalesInsights = () => {
                   value={paymentMethod}
                   onChange={(event) => {
                     setPaymentMethod(event.target.value);
-                    if (event.target.value !== 'Cash') setAmountPaid('');
-                  }}
-                >
-                  <option value="Cash">Cash</option>
-                  <option value="M-Pesa">M-Pesa</option>
-                  <option value="E-Mola">E-Mola</option>
-                  <option value="Card">Card</option>
-                  <option value="Bank Transfer">Bank Transfer</option>
-                </select>
+                  if (event.target.value !== 'Cash') setAmountPaid('');
+                }}
+              >
+                {paymentMethods.map((method) => <option key={method} value={method}>{method}</option>)}
+                <option value="Points">Points</option>
+              </select>
               </div>
               <div className="form-group">
                 <label className="form-label">{t.amountPaid}</label>
@@ -462,7 +545,7 @@ export const SalesInsights = () => {
               <strong>{formatCurrency(hasPaymentIssue ? saleRevenue - paidAmount : changeGiven, settings)}</strong>
             </div>
 
-            <button className="btn btn-primary pos-submit" type="submit" disabled={submitting || cart.length === 0 || hasStockIssue || hasPaymentIssue}>
+            <button className="btn btn-primary pos-submit" type="submit" disabled={submitting || cart.length === 0 || hasStockIssue || hasPaymentIssue || hasPointsIssue}>
               {submitting ? t.processingSale : t.completeSale}
             </button>
           </form>
@@ -483,6 +566,7 @@ export const SalesInsights = () => {
                 <th>{t.units}</th>
                 <th>{t.revenue}</th>
                 <th>{t.seller}</th>
+                <th>Warehouse</th>
                 <th>{t.paymentMethod}</th>
                 <th>COGS</th>
                 <th>{t.margin}</th>
@@ -491,7 +575,7 @@ export const SalesInsights = () => {
             </thead>
             <tbody>
               {salesRecord.length === 0 ? (
-                <tr><td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-charcoal-light)' }}>No sales logged yet.</td></tr>
+                <tr><td colSpan="10" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-charcoal-light)' }}>No sales logged yet.</td></tr>
               ) : (
                 salesRecord.map((sale) => {
                   const saleDate = new Date(sale.date);
@@ -504,6 +588,7 @@ export const SalesInsights = () => {
                       <td>{units}</td>
                       <td style={{ fontWeight: 600 }}>{formatCurrency(sale.totalRevenue, settings)}</td>
                       <td>{sale.sellerName || '-'}</td>
+                      <td>{sale.warehouseName || sale.warehouse?.name || '-'}</td>
                       <td>{sale.paymentMethod || 'Cash'}</td>
                       <td>{formatCurrency(sale.totalCogs, settings)}</td>
                       <td><span className={`badge ${saleMargin >= 40 ? 'badge-success' : 'badge-warning'}`}>{saleMargin.toFixed(1)}%</span></td>
