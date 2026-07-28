@@ -2,14 +2,18 @@ import React, { useContext, useMemo, useState } from 'react';
 import {
   CheckCircle2,
   Edit,
+  FileText,
   MessageCircle,
   Plus,
+  Printer,
   Search,
+  Target,
   ToggleLeft,
   ToggleRight,
   X,
 } from 'lucide-react';
 import { StoreContext } from '../context/StoreContext';
+import { LanguageContext } from '../context/LanguageContext';
 import { formatCurrency } from '../utils/formatters';
 
 const initialEmployeeForm = {
@@ -18,12 +22,23 @@ const initialEmployeeForm = {
   email: '',
   role: '',
   department: '',
+  performanceMode: 'Attendance',
   salary: 0,
   payFrequency: 'Monthly',
   startDate: new Date().toISOString().slice(0, 10),
   emergencyContact: '',
   notes: '',
   status: 'Active',
+};
+
+const initialGoalForm = {
+  employeeId: '',
+  title: '',
+  description: '',
+  dueDate: new Date().toISOString().slice(0, 10),
+  status: 'Pending',
+  progress: 0,
+  notes: '',
 };
 
 const initialPaymentForm = {
@@ -69,11 +84,14 @@ const formatDate = (value) => {
 };
 
 const paymentPeriodicities = ['One-time', 'Daily', 'Weekly', 'Monthly', 'Quarterly', 'Yearly'];
+const goalStatuses = ['Pending', 'In Progress', 'Completed', 'Missed', 'Cancelled'];
 
 export const HumanResources = () => {
   const {
     employees,
     hrPayments,
+    payrollSheet,
+    workGoals,
     attendanceRecords,
     hrSummary,
     settings,
@@ -83,7 +101,11 @@ export const HumanResources = () => {
     createHrPayment,
     updateHrPaymentStatus,
     upsertAttendance,
+    fetchPayroll,
+    createWorkGoal,
+    updateWorkGoal,
   } = useContext(StoreContext);
+  const { translate } = useContext(LanguageContext);
   const hrPaymentTypes = settings?.hrPaymentTypesList?.length ? settings.hrPaymentTypesList : ['Salary', 'Rent', 'Advance', 'Bonus', 'Transport', 'Other'];
   const paymentMethods = settings?.paymentMethodsList?.length ? settings.paymentMethodsList : ['Cash', 'M-Pesa', 'E-Mola', 'Card', 'Bank Transfer'];
   const attendanceStatuses = settings?.attendanceStatusesList?.length ? settings.attendanceStatusesList : ['Present', 'Absent', 'Late', 'Half Day', 'Leave'];
@@ -97,7 +119,9 @@ export const HumanResources = () => {
   const [employeeForm, setEmployeeForm] = useState(initialEmployeeForm);
   const [paymentForm, setPaymentForm] = useState(initialPaymentForm);
   const [attendanceForm, setAttendanceForm] = useState(initialAttendanceForm);
+  const [goalForm, setGoalForm] = useState(initialGoalForm);
   const [attendanceMonth, setAttendanceMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [payrollMonth, setPayrollMonth] = useState(new Date().toISOString().slice(0, 7));
   const [editId, setEditId] = useState(null);
   const [statusMsg, setStatusMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -111,11 +135,7 @@ export const HumanResources = () => {
   }, [employees, searchTerm]);
 
   const pendingPayments = hrPayments.filter((payment) => payment.status === 'Pending');
-  const todaysAttendance = attendanceRecords.filter((record) => {
-    const today = new Date().toISOString().slice(0, 10);
-    return record.date?.slice(0, 10) === today;
-  });
-
+  const payrollPayments = payrollSheet?.payments || [];
   const monthDates = useMemo(() => {
     const [year, month] = attendanceMonth.split('-').map(Number);
     const days = new Date(year, month, 0).getDate();
@@ -168,6 +188,7 @@ export const HumanResources = () => {
         email: employee.email || '',
         role: employee.role || '',
         department: employee.department || '',
+        performanceMode: employee.performanceMode || 'Attendance',
         salary: employee.salary || 0,
         payFrequency: employee.payFrequency || 'Monthly',
         startDate: employee.startDate?.slice(0, 10) || new Date().toISOString().slice(0, 10),
@@ -180,6 +201,27 @@ export const HumanResources = () => {
       setEmployeeForm(initialEmployeeForm);
     }
     setModal('employee');
+  };
+
+  const openGoalModal = (goal = null, employee = null) => {
+    setErrorMsg('');
+    setStatusMsg('');
+    if (goal) {
+      setEditId(goal.id);
+      setGoalForm({
+        employeeId: goal.employeeId || '',
+        title: goal.title || '',
+        description: goal.description || '',
+        dueDate: goal.dueDate?.slice(0, 10) || '',
+        status: goal.status || 'Pending',
+        progress: goal.progress || 0,
+        notes: goal.notes || '',
+      });
+    } else {
+      setEditId(null);
+      setGoalForm({ ...initialGoalForm, employeeId: employee?.id || '' });
+    }
+    setModal('goal');
   };
 
   const openPaymentModal = (employee = null) => {
@@ -247,6 +289,25 @@ export const HumanResources = () => {
     closeModal();
   };
 
+  const saveGoal = async (event) => {
+    event.preventDefault();
+    const result = editId
+      ? await updateWorkGoal(editId, goalForm)
+      : await createWorkGoal(goalForm);
+    if (!result.success) {
+      setErrorMsg(result.error || 'Could not save goal.');
+      return;
+    }
+    setStatusMsg(editId ? 'Goal updated.' : 'Goal created.');
+    closeModal();
+  };
+
+  const changePayrollMonth = async (month) => {
+    setPayrollMonth(month);
+    const result = await fetchPayroll(month);
+    setErrorMsg(result.success ? '' : result.error || 'Could not load payroll.');
+  };
+
   const toggleEmployeeStatus = async (employee) => {
     const nextStatus = employee.status === 'Active' ? 'Inactive' : 'Active';
     const result = await updateEmployeeStatus(employee.id, nextStatus);
@@ -263,19 +324,76 @@ export const HumanResources = () => {
     setErrorMsg(result.success ? '' : result.error || 'Could not update payment.');
   };
 
+  const roleValues = employeeForm.role
+    ? employeeForm.role.split(',').map((role) => role.trim()).filter(Boolean)
+    : [];
+
+  const toggleRole = (role) => {
+    const nextRoles = roleValues.includes(role)
+      ? roleValues.filter((item) => item !== role)
+      : [...roleValues, role];
+    setEmployeeForm({ ...employeeForm, role: nextRoles.join(', ') });
+  };
+
+  const printSalaryReceipt = (payment) => {
+    const employee = payment.employee || {};
+    const html = `
+      <html>
+        <head>
+          <title>${payment.receiptNumber || 'Salary Receipt'}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 32px; color: #2E2E2E; }
+            .receipt { max-width: 720px; margin: auto; border: 1px solid #ddd5c8; padding: 28px; }
+            h1 { color: #31462d; margin: 0 0 6px; }
+            .muted { color: #777; }
+            table { width: 100%; border-collapse: collapse; margin-top: 22px; }
+            td, th { padding: 10px; border-bottom: 1px solid #eee8dd; text-align: left; }
+            .total { font-size: 22px; font-weight: 700; color: #31462d; }
+            .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 56px; }
+            .line { border-top: 1px solid #333; padding-top: 8px; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="receipt">
+            <h1>${settings?.companyName || 'Soul2Soul'}</h1>
+            <div class="muted">Salary receipt / Recibo de salario</div>
+            <p><strong>Receipt:</strong> ${payment.receiptNumber || '-'}</p>
+            <p><strong>Month:</strong> ${payment.payrollMonth || '-'}</p>
+            <table>
+              <tr><th>Worker</th><td>${employee.fullName || '-'}</td></tr>
+              <tr><th>Role</th><td>${employee.role || '-'}</td></tr>
+              <tr><th>Department</th><td>${employee.department || '-'}</td></tr>
+              <tr><th>Status</th><td>${payment.status}</td></tr>
+              <tr><th>Paid date</th><td>${payment.paidDate ? formatDate(payment.paidDate) : '-'}</td></tr>
+              <tr><th>Method</th><td>${payment.method || '-'}</td></tr>
+              <tr><th>Amount</th><td class="total">${formatCurrency(payment.amount, settings)}</td></tr>
+            </table>
+            <div class="signatures">
+              <div class="line">Company signature</div>
+              <div class="line">Worker signature</div>
+            </div>
+          </div>
+          <script>window.print();</script>
+        </body>
+      </html>`;
+    const win = window.open('', '_blank', 'width=900,height=700');
+    win.document.write(html);
+    win.document.close();
+  };
+
   return (
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title" style={{ marginBottom: '0.35rem' }}>Human Resources</h1>
-          <p className="page-subtitle">Manage workers, payroll items, rent and general payments, plus simple attendance.</p>
+          <h1 className="page-title" style={{ marginBottom: '0.35rem' }}>{translate('humanResources')}</h1>
+          <p className="page-subtitle">{translate('hrSubtitle')}</p>
         </div>
         <div className="page-actions">
           <button className="btn btn-secondary" onClick={() => openPaymentModal()}>
-            <Plus size={18} /> Add Payment
+            <Plus size={18} /> {translate('addPayment')}
           </button>
           <button className="btn btn-primary" onClick={() => openEmployeeModal()}>
-            <Plus size={18} /> Add Worker
+            <Plus size={18} /> {translate('addWorker')}
           </button>
         </div>
       </div>
@@ -285,27 +403,29 @@ export const HumanResources = () => {
 
       <div className="stats-grid hr-stats-grid">
         <div className="stat-card">
-          <div className="stat-label">Active Workers</div>
+          <div className="stat-label">{translate('activeWorkers')}</div>
           <div className="stat-value">{hrSummary?.activeEmployees || 0}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Monthly Payroll</div>
+          <div className="stat-label">{translate('monthlyPayroll')}</div>
           <div className="stat-value">{formatCurrency(hrSummary?.monthlyPayroll || 0, settings)}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Pending Payments</div>
+          <div className="stat-label">{translate('pendingPayments')}</div>
           <div className="stat-value">{formatCurrency(hrSummary?.pendingPayments || 0, settings)}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Marked Today</div>
-          <div className="stat-value">{todaysAttendance.length}</div>
+          <div className="stat-label">{translate('openGoals')}</div>
+          <div className="stat-value">{hrSummary?.openGoals || 0}</div>
         </div>
       </div>
 
       <div className="hr-tabs">
-        <button className={activeTab === 'employees' ? 'active' : ''} onClick={() => setActiveTab('employees')}>Workers</button>
-        <button className={activeTab === 'payments' ? 'active' : ''} onClick={() => setActiveTab('payments')}>Payments</button>
-        <button className={activeTab === 'attendance' ? 'active' : ''} onClick={() => setActiveTab('attendance')}>Attendance</button>
+        <button className={activeTab === 'employees' ? 'active' : ''} onClick={() => setActiveTab('employees')}>{translate('workers')}</button>
+        <button className={activeTab === 'payroll' ? 'active' : ''} onClick={() => setActiveTab('payroll')}>{translate('payrollSheet')}</button>
+        <button className={activeTab === 'payments' ? 'active' : ''} onClick={() => setActiveTab('payments')}>{translate('payments')}</button>
+        <button className={activeTab === 'attendance' ? 'active' : ''} onClick={() => setActiveTab('attendance')}>{translate('attendance')}</button>
+        <button className={activeTab === 'goals' ? 'active' : ''} onClick={() => setActiveTab('goals')}>{translate('goalsDeadlines')}</button>
       </div>
 
       {activeTab === 'employees' && (
@@ -345,6 +465,7 @@ export const HumanResources = () => {
                           </a>
                         )}
                         <button className="btn btn-ghost compact-btn" onClick={() => openAttendanceModal(employee)} title="Mark attendance">A</button>
+                        <button className="btn btn-ghost compact-btn" onClick={() => openGoalModal(null, employee)} title="Add goal"><Target size={16} /></button>
                         <button className="btn btn-ghost compact-btn" onClick={() => openPaymentModal(employee)} title="Add payment">MT</button>
                         <button className="btn btn-ghost compact-btn" onClick={() => openEmployeeModal(employee)} title="Edit worker"><Edit size={16} /></button>
                         <button className="btn btn-ghost compact-btn" onClick={() => toggleEmployeeStatus(employee)} title="Change status">
@@ -359,6 +480,45 @@ export const HumanResources = () => {
                     <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>No workers found.</td>
                   </tr>
                 )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'payroll' && (
+        <div className="card">
+          <div className="section-heading">
+            <div>
+              <h3>{translate('payrollSheet')}</h3>
+              <span>{translate('payrollHint')}</span>
+            </div>
+            <div className="row-actions">
+              <input className="form-input toolbar-select" type="month" value={payrollMonth} onChange={(event) => changePayrollMonth(event.target.value)} />
+              <button className="btn btn-secondary" type="button" onClick={() => window.print()}><Printer size={18} /> {translate('print')}</button>
+            </div>
+          </div>
+          <div className="payroll-summary-grid">
+            <div><span>{translate('totalPayroll')}</span><strong>{formatCurrency(payrollSheet?.totals?.gross || 0, settings)}</strong></div>
+            <div><span>{translate('paid')}</span><strong>{formatCurrency(payrollSheet?.totals?.paid || 0, settings)}</strong></div>
+            <div><span>{translate('pending')}</span><strong>{formatCurrency(payrollSheet?.totals?.pending || 0, settings)}</strong></div>
+          </div>
+          <div className="table-container">
+            <table>
+              <thead><tr><th>{translate('worker')}</th><th>{translate('role')}</th><th>{translate('department')}</th><th>{translate('amount')}</th><th>{translate('status')}</th><th>{translate('receipt')}</th><th>{translate('action')}</th></tr></thead>
+              <tbody>
+                {payrollPayments.map((payment) => (
+                  <tr key={payment.id}>
+                    <td><strong>{payment.employee?.fullName || '-'}</strong><span className="table-muted">{payment.receiptNumber || '-'}</span></td>
+                    <td>{payment.employee?.role || '-'}</td>
+                    <td>{payment.employee?.department || '-'}</td>
+                    <td>{formatCurrency(payment.amount, settings)}</td>
+                    <td><span className={`badge ${payment.status === 'Paid' ? 'badge-success' : 'badge-warning'}`}>{payment.status}</span></td>
+                    <td><button className="btn btn-ghost compact-btn" onClick={() => printSalaryReceipt(payment)}><FileText size={16} /></button></td>
+                    <td><button className="btn btn-ghost compact-btn" onClick={() => markPaymentPaid(payment)}>{payment.status === 'Paid' ? translate('reopen') : translate('markPaid')}</button></td>
+                  </tr>
+                ))}
+                {payrollPayments.length === 0 && <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>{translate('noPayroll')}</td></tr>}
               </tbody>
             </table>
           </div>
@@ -439,7 +599,7 @@ export const HumanResources = () => {
                 </tr>
               </thead>
               <tbody>
-                {employees.map((employee) => {
+                {employees.filter((employee) => employee.performanceMode !== 'Goals').map((employee) => {
                   const summary = monthlySummaryFor(employee.id);
                   return (
                     <tr key={employee.id}>
@@ -507,12 +667,42 @@ export const HumanResources = () => {
         </div>
       )}
 
+      {activeTab === 'goals' && (
+        <div className="card">
+          <div className="section-heading">
+            <div>
+              <h3>{translate('goalsDeadlines')}</h3>
+              <span>{translate('goalsHint')}</span>
+            </div>
+            <button className="btn btn-primary" onClick={() => openGoalModal()}><Plus size={18} /> {translate('addGoal')}</button>
+          </div>
+          <div className="table-container">
+            <table>
+              <thead><tr><th>{translate('worker')}</th><th>{translate('goal')}</th><th>{translate('deadline')}</th><th>{translate('progress')}</th><th>{translate('status')}</th><th>{translate('action')}</th></tr></thead>
+              <tbody>
+                {workGoals.map((goal) => (
+                  <tr key={goal.id}>
+                    <td>{goal.employee?.fullName || '-'}</td>
+                    <td><strong>{goal.title}</strong><span className="table-muted">{goal.description || goal.notes || '-'}</span></td>
+                    <td>{formatDate(goal.dueDate)}</td>
+                    <td>{goal.progress || 0}%</td>
+                    <td><span className={`badge ${goal.status === 'Completed' ? 'badge-success' : goal.status === 'Missed' ? 'badge-danger' : 'badge-warning'}`}>{goal.status}</span></td>
+                    <td><button className="btn btn-ghost compact-btn" onClick={() => openGoalModal(goal)}><Edit size={16} /></button></td>
+                  </tr>
+                ))}
+                {workGoals.length === 0 && <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>{translate('noGoals')}</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {modal === 'employee' && (
         <div className="modal-backdrop">
           <div className="modal-card">
             <div className="modal-header">
               <div>
-                <h2>{editId ? 'Edit Worker' : 'Add Worker'}</h2>
+                <h2>{editId ? translate('editWorker') : translate('addWorker')}</h2>
                 <p>Keep the HR profile simple and practical.</p>
               </div>
               <button className="icon-button" onClick={closeModal}><X size={20} /></button>
@@ -535,19 +725,31 @@ export const HumanResources = () => {
               </div>
               <div className="receive-grid">
                 <div className="form-group">
-                  <label className="form-label">Role</label>
-                  <select className="form-input" value={employeeForm.role} onChange={(event) => setEmployeeForm({ ...employeeForm, role: event.target.value })}>
-                    <option value="">Select role</option>
-                    {hrRoles.map((role) => <option key={role} value={role}>{role}</option>)}
-                  </select>
+                  <label className="form-label">{translate('role')}</label>
+                  <div className="multi-option-list">
+                    {hrRoles.map((role) => (
+                      <label key={role} className="multi-option-pill">
+                        <input type="checkbox" checked={roleValues.includes(role)} onChange={() => toggleRole(role)} />
+                        {role}
+                      </label>
+                    ))}
+                  </div>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Department</label>
+                  <label className="form-label">{translate('department')}</label>
                   <select className="form-input" value={employeeForm.department} onChange={(event) => setEmployeeForm({ ...employeeForm, department: event.target.value })}>
                     <option value="">Select department</option>
                     {hrDepartments.map((department) => <option key={department} value={department}>{department}</option>)}
                   </select>
                 </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">{translate('controlMode')}</label>
+                <select className="form-input" value={employeeForm.performanceMode} onChange={(event) => setEmployeeForm({ ...employeeForm, performanceMode: event.target.value })}>
+                  <option value="Attendance">{translate('attendanceControlled')}</option>
+                  <option value="Goals">{translate('goalsControlled')}</option>
+                </select>
+                <small className="field-help">{translate('controlModeHint')}</small>
               </div>
               <div className="receive-grid">
                 <div className="form-group">
@@ -585,6 +787,62 @@ export const HumanResources = () => {
               <div className="modal-actions">
                 <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancel</button>
                 <button type="submit" className="btn btn-primary">{editId ? 'Save Changes' : 'Create Worker'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {modal === 'goal' && (
+        <div className="modal-backdrop">
+          <div className="modal-card">
+            <div className="modal-header">
+              <div>
+                <h2>{editId ? translate('editGoal') : translate('addGoal')}</h2>
+                <p>{translate('goalModalHint')}</p>
+              </div>
+              <button className="icon-button" onClick={closeModal}><X size={20} /></button>
+            </div>
+            {errorMsg && <div className="inline-alert inline-alert-danger">{errorMsg}</div>}
+            <form onSubmit={saveGoal}>
+              <div className="form-group">
+                <label className="form-label">{translate('worker')} *</label>
+                <select className="form-input" required value={goalForm.employeeId} onChange={(event) => setGoalForm({ ...goalForm, employeeId: event.target.value })}>
+                  <option value="">{translate('selectWorker')}</option>
+                  {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.fullName}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">{translate('goal')} *</label>
+                <input className="form-input" required value={goalForm.title} onChange={(event) => setGoalForm({ ...goalForm, title: event.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">{translate('description')}</label>
+                <textarea className="form-input" rows="3" value={goalForm.description} onChange={(event) => setGoalForm({ ...goalForm, description: event.target.value })}></textarea>
+              </div>
+              <div className="receive-grid">
+                <div className="form-group">
+                  <label className="form-label">{translate('deadline')}</label>
+                  <input type="date" className="form-input" value={goalForm.dueDate} onChange={(event) => setGoalForm({ ...goalForm, dueDate: event.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">{translate('status')}</label>
+                  <select className="form-input" value={goalForm.status} onChange={(event) => setGoalForm({ ...goalForm, status: event.target.value })}>
+                    {goalStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">{translate('progress')}</label>
+                <input type="number" min="0" max="100" className="form-input" value={goalForm.progress} onChange={(event) => setGoalForm({ ...goalForm, progress: event.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">{translate('notes')}</label>
+                <textarea className="form-input" rows="3" value={goalForm.notes} onChange={(event) => setGoalForm({ ...goalForm, notes: event.target.value })}></textarea>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-ghost" onClick={closeModal}>{translate('cancel')}</button>
+                <button type="submit" className="btn btn-primary">{translate('saveChanges')}</button>
               </div>
             </form>
           </div>

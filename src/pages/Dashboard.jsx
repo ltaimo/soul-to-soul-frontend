@@ -98,6 +98,11 @@ export const Dashboard = ({ setActivePage }) => {
             <div className="stat-value">{formatCurrency(kpis.pendingPaymentsValue || 0, settings)}</div>
             <div className="stat-trend"><Users size={16} /> {kpis.activeEmployees || 0} active workers</div>
           </div>
+          <div className="stat-card" role="button" onClick={() => setActivePage ? setActivePage('Human Resources') : null}>
+            <div className="stat-label">Goals & Deadlines</div>
+            <div className="stat-value">{kpis.openGoals || 0}</div>
+            <div className="stat-trend"><Target size={16} /> {kpis.overdueGoals || 0} overdue goals</div>
+          </div>
           <div className="stat-card" role="button" onClick={() => setActivePage ? setActivePage('Customers') : null}>
             <div className="stat-label">Loyalty Customers</div>
             <div className="stat-value">{kpis.loyaltyCustomerCount || 0}</div>
@@ -225,6 +230,16 @@ export const Dashboard = ({ setActivePage }) => {
               <h4 style={{ color: 'var(--color-charcoal)', fontWeight: 600 }}>Pending Payments</h4>
               <p style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{alerts.pendingPaymentCount || 0}</p>
               <p style={{ fontSize: '0.875rem', color: 'var(--color-charcoal-light)' }}>{formatCurrency(alerts.pendingPaymentValue || 0, settings)} pending.</p>
+            </div>
+
+            <div 
+              role="button"
+              onClick={() => setActivePage ? setActivePage('Human Resources') : null}
+              style={{ backgroundColor: 'rgba(217, 83, 79, 0.05)', padding: '1.5rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+            >
+              <h4 style={{ color: 'var(--color-danger)', fontWeight: 600 }}>Overdue Goals</h4>
+              <p style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{alerts.overdueGoals || 0}</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-charcoal-light)' }}>Targets and deadlines need review.</p>
             </div>
           </div>
         </div>

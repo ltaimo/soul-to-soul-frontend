@@ -540,6 +540,61 @@ tr:hover {
   padding: 0;
 }
 
+.payroll-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.payroll-summary-grid > div {
+  padding: 1rem;
+  border: 1px solid rgba(232, 229, 223, 0.9);
+  border-radius: var(--radius-md);
+  background: rgba(247, 245, 242, 0.72);
+}
+
+.payroll-summary-grid span {
+  display: block;
+  color: var(--color-charcoal-light);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.payroll-summary-grid strong {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--color-primary-deep);
+  font-size: 1.25rem;
+}
+
+.multi-option-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.multi-option-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-bg);
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.multi-option-pill:has(input:checked) {
+  color: var(--color-primary-deep);
+  border-color: rgba(107, 142, 126, 0.35);
+  background: rgba(107, 142, 126, 0.12);
+}
+
 .settings-remove:hover {
   color: var(--color-danger);
   background: rgba(217, 83, 79, 0.1);
@@ -1925,6 +1980,10 @@ tr:hover {
   .settings-toggle,
   .settings-remove {
     width: 100%;
+  }
+
+  .payroll-summary-grid {
+    grid-template-columns: 1fr;
   }
 
   th,

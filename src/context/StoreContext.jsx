@@ -13,6 +13,8 @@ export const StoreProvider = ({ children }) => {
   const [commercialPartners, setCommercialPartners] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [hrPayments, setHrPayments] = useState([]);
+  const [payrollSheet, setPayrollSheet] = useState(null);
+  const [workGoals, setWorkGoals] = useState([]);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [hrSummary, setHrSummary] = useState(null);
   const [auditLogs, setAuditLogs] = useState([]);
@@ -100,21 +102,27 @@ export const StoreProvider = ({ children }) => {
       setSettings(stngs);
 
       if (canAccessHr) {
-        const [employeesRes, paymentsRes, attendanceRes, summaryRes] = await Promise.all([
+        const [employeesRes, paymentsRes, attendanceRes, summaryRes, payrollRes, goalsRes] = await Promise.all([
           fetchWithAuth(`${apiBaseUrl}/api/hr/employees`),
           fetchWithAuth(`${apiBaseUrl}/api/hr/payments`),
           fetchWithAuth(`${apiBaseUrl}/api/hr/attendance`),
-          fetchWithAuth(`${apiBaseUrl}/api/hr/summary`)
+          fetchWithAuth(`${apiBaseUrl}/api/hr/summary`),
+          fetchWithAuth(`${apiBaseUrl}/api/hr/payroll`),
+          fetchWithAuth(`${apiBaseUrl}/api/hr/goals`)
         ]);
         setEmployees(await employeesRes.json());
         setHrPayments(await paymentsRes.json());
         setAttendanceRecords(await attendanceRes.json());
         setHrSummary(await summaryRes.json());
+        setPayrollSheet(await payrollRes.json());
+        setWorkGoals(await goalsRes.json());
       } else {
         setEmployees([]);
         setHrPayments([]);
         setAttendanceRecords([]);
         setHrSummary(null);
+        setPayrollSheet(null);
+        setWorkGoals([]);
       }
 
       if (canAccessAudit) {
@@ -633,6 +641,51 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
+  const fetchPayroll = async (month) => {
+    try {
+      const suffix = month ? `?month=${encodeURIComponent(month)}` : '';
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/hr/payroll${suffix}`);
+      if (!response.ok) throw await response.json();
+      const sheet = await response.json();
+      setPayrollSheet(sheet);
+      return { success: true, sheet };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to fetch payroll' };
+    }
+  };
+
+  const createWorkGoal = async (data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/hr/goals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true, goal: result.goal };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to create goal' };
+    }
+  };
+
+  const updateWorkGoal = async (id, data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/hr/goals/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true, goal: result.goal };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to update goal' };
+    }
+  };
+
   if (loading) return <div style={{padding: '2rem'}}>Loading Data from Database...</div>;
 
   return (
@@ -646,6 +699,8 @@ export const StoreProvider = ({ children }) => {
       commercialPartners,
       employees,
       hrPayments,
+      payrollSheet,
+      workGoals,
       attendanceRecords,
       hrSummary,
       auditLogs,
@@ -681,6 +736,9 @@ export const StoreProvider = ({ children }) => {
       createHrPayment,
       updateHrPaymentStatus,
       upsertAttendance,
+      fetchPayroll,
+      createWorkGoal,
+      updateWorkGoal,
       updateSettings,
       fetchAuditLogs,
       refreshData: fetchItems
