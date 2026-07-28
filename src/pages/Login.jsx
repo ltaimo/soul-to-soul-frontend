@@ -1,15 +1,16 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
-import { AlertCircle, ArrowRight, LockKeyhole, Mail } from 'lucide-react';
+import { AlertCircle, ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Moon, Sun } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 export const Login = () => {
-  const { login } = useContext(AuthContext);
+  const { login, theme, setTheme } = useContext(AuthContext);
   const { language, setLanguage, t } = useContext(LanguageContext);
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -22,7 +23,7 @@ export const Login = () => {
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ identifier, password })
       });
 
       const data = await res.json();
@@ -48,6 +49,15 @@ export const Login = () => {
             <option value="en">EN</option>
             <option value="pt">PT</option>
           </select>
+          <button
+            className="theme-toggle login-theme-toggle"
+            type="button"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            {theme === 'dark' ? 'Light' : 'Dark'}
+          </button>
 
           {errorMsg && (
             <div className="login-alert" role="alert">
@@ -57,18 +67,18 @@ export const Login = () => {
           )}
 
           <form onSubmit={handleSubmit} className="login-form">
-            <label className="field-label" htmlFor="email">{t.emailAddress}</label>
+            <label className="field-label" htmlFor="identifier">{t.loginIdentifier}</label>
             <div className="input-shell">
               <Mail size={18} />
               <input
-                id="email"
-                type="email"
-                autoComplete="email"
+                id="identifier"
+                type="text"
+                autoComplete="username"
                 required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
+                value={identifier}
+                onChange={e => setIdentifier(e.target.value)}
                 disabled={loading}
-                placeholder="admin@soultosoul.local"
+                placeholder="admin@soultosoul.local / admin / +258..."
               />
             </div>
 
@@ -77,7 +87,7 @@ export const Login = () => {
               <LockKeyhole size={18} />
               <input
                 id="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 required
                 value={password}
@@ -85,6 +95,9 @@ export const Login = () => {
                 disabled={loading}
                 placeholder="Enter your password"
               />
+              <button className="password-eye" type="button" onClick={() => setShowPassword((value) => !value)} aria-label="Show password">
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
 
             <button type="submit" className="btn btn-primary login-submit" disabled={loading}>

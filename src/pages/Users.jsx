@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { Plus, X, Edit, UserCheck, UserX, Shield, ShieldAlert, KeyRound } from 'lucide-react';
+import { StoreContext } from '../context/StoreContext';
+import { Plus, X, Edit, UserCheck, UserX, ShieldAlert, KeyRound, Phone, AtSign, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { ROLE_PROFILES, getRoleProfile } from '../config/roles';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
@@ -8,9 +9,13 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 const initialFormData = {
   fullName: '',
   email: '',
+  username: '',
+  phone: '',
+  employeeId: '',
   password: '',
   role: 'salesperson',
-  status: 'active'
+  status: 'active',
+  mustChangePassword: false
 };
 
 export const Users = () => {
@@ -21,8 +26,18 @@ export const Users = () => {
   const [formData, setFormData] = useState(initialFormData);
   const [editId, setEditId] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [toast, setToast] = useState(null);
+  const [showReset, setShowReset] = useState(false);
+  const [resetPassword, setResetPassword] = useState('');
   const { token, logout } = useContext(AuthContext);
+  const { employees } = useContext(StoreContext);
   const selectedRoleProfile = getRoleProfile(formData.role);
+
+  const notify = (type, message) => {
+    setToast({ type, message });
+    window.clearTimeout(notify.timer);
+    notify.timer = window.setTimeout(() => setToast(null), 4200);
+  };
 
   const fetchWithAuth = async (url, options = {}) => {
     const headers = { ...options.headers };
@@ -53,21 +68,46 @@ export const Users = () => {
     setEditId(null);
     setIsEditing(false);
     setErrorMsg('');
+    setShowReset(false);
+    setResetPassword('');
     setShowModal(true);
   };
 
   const openEdit = (user) => {
     setFormData({
       fullName: user.fullName,
-      email: user.email,
-      password: '', // Hidden by default, only supplied if changing
+      email: user.email || '',
+      username: user.username || '',
+      phone: user.phone || '',
+      employeeId: user.employeeId || '',
+      password: '',
       role: user.role,
-      status: user.status
+      status: user.status,
+      mustChangePassword: Boolean(user.mustChangePassword)
     });
     setEditId(user.id);
     setIsEditing(true);
     setErrorMsg('');
+    setShowReset(false);
+    setResetPassword('');
     setShowModal(true);
+  };
+
+  const selectEmployee = (employeeId) => {
+    const employee = employees.find((item) => String(item.id) === String(employeeId));
+    setFormData((current) => ({
+      ...current,
+      employeeId,
+      fullName: employee?.fullName || current.fullName,
+      email: employee?.email || current.email,
+      phone: employee?.phone || current.phone,
+      username: current.username || (employee?.fullName || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '.')
+        .replace(/^\.|\.$/g, ''),
+    }));
   };
 
   const handleStatusToggle = async (id, currentStatus) => {
@@ -80,18 +120,24 @@ export const Users = () => {
       });
       if (!res.ok) {
         const data = await res.json();
-        alert(`Error: ${data.message || 'Failed to update user status'}`);
+        notify('error', data.message || 'Failed to update user status');
         return;
       }
       fetchUsers();
+      notify('success', `User ${newStatus === 'active' ? 'reactivated' : 'deactivated'}.`);
     } catch {
-      alert("Failed to connect to the server.");
+      notify('error', 'Could not connect to the server. Check your internet/API connection.');
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
+
+    if (!formData.email && !formData.username && !formData.phone) {
+      setErrorMsg('Add at least one login option: email, username, or phone.');
+      return;
+    }
 
     if (!isEditing && (!formData.password || formData.password.length < 6)) {
       setErrorMsg('Password must be at least 6 characters.');
@@ -135,8 +181,37 @@ export const Users = () => {
 
       setShowModal(false);
       fetchUsers();
+      notify('success', isEditing ? 'User updated successfully.' : 'User created successfully.');
     } catch (e) {
       setErrorMsg(e.message || 'Failed to save user.');
+      notify('error', e.message || 'Failed to save user.');
+    }
+  };
+
+  const handleResetPassword = async () => {
+    setErrorMsg('');
+    if (!resetPassword || resetPassword.length < 6) {
+      setErrorMsg('Temporary password must be at least 6 characters.');
+      return;
+    }
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/api/users/${editId}/reset-password`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: resetPassword,
+          mustChangePassword: formData.mustChangePassword,
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw data;
+      setResetPassword('');
+      setShowReset(false);
+      fetchUsers();
+      notify('success', 'Password reset successfully.');
+    } catch (e) {
+      setErrorMsg(e.message || 'Could not reset password.');
+      notify('error', e.message || 'Could not reset password.');
     }
   };
 
@@ -152,15 +227,23 @@ export const Users = () => {
         </button>
       </div>
 
+      {toast && (
+        <div className={`toast-popup ${toast.type === 'error' ? 'toast-error' : 'toast-success'}`}>
+          {toast.type === 'error' ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
+          {toast.message}
+        </div>
+      )}
+
       <div className="card">
         <div className="table-container">
           <table>
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Email / Username</th>
+                <th>Login IDs</th>
                 <th>Role</th>
                 <th>Status</th>
+                <th>Password Rule</th>
                 <th>Joined</th>
                 <th>Actions</th>
               </tr>
@@ -172,7 +255,11 @@ export const Users = () => {
                     {user.fullName}
                   </td>
                   <td style={{ color: 'var(--color-charcoal-light)' }}>
-                    {user.email}
+                    <div className="user-id-stack">
+                      {user.email && <span><AtSign size={13} /> {user.email}</span>}
+                      {user.username && <span><AtSign size={13} /> {user.username}</span>}
+                      {user.phone && <span><Phone size={13} /> {user.phone}</span>}
+                    </div>
                   </td>
                   <td>
                     <span className="badge" style={{ 
@@ -186,6 +273,11 @@ export const Users = () => {
                   <td>
                     <span className={user.status === 'active' ? 'badge badge-success' : 'badge badge-warning'}>
                       {user.status}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`badge ${user.mustChangePassword ? 'badge-warning' : 'badge-success'}`}>
+                      {user.mustChangePassword ? 'Must change' : 'Normal'}
                     </span>
                   </td>
                   <td style={{ fontSize: '0.875rem' }}>
@@ -210,7 +302,7 @@ export const Users = () => {
               ))}
               {users.length === 0 && (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>No users found. System may need to be initialized.</td>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>No users found. System may need to be initialized.</td>
                 </tr>
               )}
             </tbody>
@@ -239,14 +331,35 @@ export const Users = () => {
             <form onSubmit={handleSubmit}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Use existing worker</label>
+                  <select className="form-input" value={formData.employeeId} onChange={e => selectEmployee(e.target.value)}>
+                    <option value="">Create manually</option>
+                    {employees.map((employee) => (
+                      <option key={employee.id} value={employee.id}>{employee.fullName} {employee.phone ? `- ${employee.phone}` : ''}</option>
+                    ))}
+                  </select>
+                  <small style={{ color: 'var(--color-charcoal-light)' }}>Selecting a worker fills name, phone and email when available.</small>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Full Name *</label>
                   <input type="text" className="form-input" required value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} />
                 </div>
                 
+                <div className="form-grid-2">
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Email Address</label>
+                    <input type="email" className="form-input" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Username</label>
+                    <input className="form-input" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} placeholder="ex: maria.baia" />
+                  </div>
+                </div>
+
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>Email Address *</label>
-                  <input type="email" className="form-input" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} disabled={isEditing} />
-                  {isEditing && <small style={{ color: 'var(--color-charcoal-light)' }}>Email identifiers cannot be reassigned natively after creation.</small>}
+                  <label>Phone Number</label>
+                  <input className="form-input" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="+258 84..." />
                 </div>
                 
                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -256,6 +369,25 @@ export const Users = () => {
                     <input type={isEditing ? 'password' : 'text'} className="form-input" style={{ paddingLeft: '34px' }} placeholder={isEditing ? "Leave blank to keep unchanged" : "min. 6 characters"} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
                   </div>
                 </div>
+
+                <label className="checkbox-line">
+                  <input type="checkbox" checked={formData.mustChangePassword} onChange={e => setFormData({...formData, mustChangePassword: e.target.checked})} />
+                  User must change password after login/reset
+                </label>
+
+                {isEditing && (
+                  <div className="reset-password-box">
+                    <button className="btn btn-secondary" type="button" onClick={() => setShowReset((value) => !value)}>
+                      <KeyRound size={16} /> Reset Password
+                    </button>
+                    {showReset && (
+                      <div className="form-grid-2" style={{ marginTop: '0.75rem' }}>
+                        <input className="form-input" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} placeholder="Temporary password" />
+                        <button className="btn btn-primary" type="button" onClick={handleResetPassword}>Apply Reset</button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>User Profile / Access Level</label>

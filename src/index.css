@@ -31,6 +31,26 @@
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+:root[data-theme='dark'] {
+  --color-primary: #8DB6A4;
+  --color-primary-hover: #9BC4B2;
+  --color-primary-deep: #B6D8CA;
+  --color-olive: #C1CB73;
+  --color-earth: #E2B27E;
+  --color-honey: #D9A343;
+  --color-sand: #4A433A;
+  --color-sand-hover: #5A5147;
+  --color-cream: #181A17;
+  --color-charcoal: #F2EFE9;
+  --color-charcoal-light: #BDB7AE;
+  --color-bg: #111310;
+  --color-surface: #1B1F1A;
+  --color-border: #33382F;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.28);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.34);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.42);
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -43,6 +63,26 @@ body {
   color: var(--color-charcoal);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-charcoal);
+  background: var(--color-surface);
+  font-size: 0.8rem;
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+.theme-toggle:hover {
+  border-color: rgba(107, 142, 126, 0.45);
+  transform: translateY(-1px);
 }
 
 @keyframes softRise {
@@ -670,9 +710,10 @@ tr:hover {
 }
 
 .login-card {
+  position: relative;
   width: min(100%, 460px);
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   padding: 2rem;
@@ -743,6 +784,12 @@ tr:hover {
   font-size: 0.9rem;
 }
 
+.login-theme-toggle {
+  position: absolute;
+  top: 1.25rem;
+  left: 1.25rem;
+}
+
 .login-form {
   display: grid;
   gap: 0.75rem;
@@ -783,6 +830,16 @@ tr:hover {
   background: transparent;
   color: var(--color-charcoal);
   font: inherit;
+}
+
+.password-eye {
+  display: grid;
+  place-items: center;
+  color: var(--color-charcoal-light);
+}
+
+.password-eye:hover {
+  color: var(--color-primary);
 }
 
 .input-shell input::placeholder {
@@ -895,6 +952,60 @@ tr:hover {
   color: var(--color-danger);
   background: rgba(217, 83, 79, 0.12);
   border: 1px solid rgba(217, 83, 79, 0.2);
+}
+
+.toast-popup {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 2000;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  max-width: min(92vw, 420px);
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  animation: gentlePop 0.2s ease both;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.toast-success {
+  color: var(--color-success);
+  border-color: rgba(92, 184, 92, 0.24);
+}
+
+.toast-error {
+  color: var(--color-danger);
+  border-color: rgba(217, 83, 79, 0.24);
+}
+
+.user-id-stack {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.user-id-stack span,
+.checkbox-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.checkbox-line {
+  color: var(--color-charcoal);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.reset-password-box {
+  padding: 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgba(107, 142, 126, 0.07);
 }
 
 .pos-grid {
