@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, 
   LineChart, Line, PieChart, Pie, Cell 
 } from 'recharts';
-import { TrendingUp, AlertCircle, Target, DollarSign, Package, Shield } from 'lucide-react';
+import { TrendingUp, AlertCircle, Target, DollarSign, Package, Shield, Warehouse, ArrowRightLeft, Users, HeartHandshake, ShieldCheck } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '../utils/formatters';
 import { StoreContext } from '../context/StoreContext';
 import { AuthContext } from '../context/AuthContext';
@@ -81,6 +81,41 @@ export const Dashboard = ({ setActivePage }) => {
         </div>
       )}
 
+      {canSeeFinancials && (
+        <div className="stats-grid" style={{ marginBottom: '2rem' }}>
+          <div className="stat-card" role="button" onClick={() => setActivePage ? setActivePage('Inventory') : null}>
+            <div className="stat-label">Warehouses</div>
+            <div className="stat-value">{kpis.activeWarehouseCount || 0}/{kpis.warehouseCount || 0}</div>
+            <div className="stat-trend"><Warehouse size={16} /> {kpis.totalWarehouseUnits || 0} units across locations</div>
+          </div>
+          <div className="stat-card" role="button" onClick={() => setActivePage ? setActivePage('Inventory') : null}>
+            <div className="stat-label">Stock In Transit</div>
+            <div className="stat-value">{kpis.inTransitTransferCount || 0}</div>
+            <div className="stat-trend"><ArrowRightLeft size={16} /> {kpis.transferUnitsInTransit || 0} units moving</div>
+          </div>
+          <div className="stat-card" role="button" onClick={() => setActivePage ? setActivePage('Human Resources') : null}>
+            <div className="stat-label">HR Pending Payments</div>
+            <div className="stat-value">{formatCurrency(kpis.pendingPaymentsValue || 0, settings)}</div>
+            <div className="stat-trend"><Users size={16} /> {kpis.activeEmployees || 0} active workers</div>
+          </div>
+          <div className="stat-card" role="button" onClick={() => setActivePage ? setActivePage('Customers') : null}>
+            <div className="stat-label">Loyalty Customers</div>
+            <div className="stat-value">{kpis.loyaltyCustomerCount || 0}</div>
+            <div className="stat-trend"><HeartHandshake size={16} /> {kpis.loyaltyPointsIssued || 0} points currently issued</div>
+          </div>
+          <div className="stat-card" role="button" onClick={() => setActivePage ? setActivePage('Sellers & Resellers') : null}>
+            <div className="stat-label">Commercial Partners</div>
+            <div className="stat-value">{kpis.activeCommercialPartners || 0}</div>
+            <div className="stat-trend"><DollarSign size={16} /> {formatCurrency(kpis.commissionPayable || 0, settings)} commissions</div>
+          </div>
+          <div className="stat-card" role="button" onClick={() => setActivePage ? setActivePage('Audit Logs') : null}>
+            <div className="stat-label">Audit Events Today</div>
+            <div className="stat-value">{kpis.auditEventsToday || 0}</div>
+            <div className="stat-trend"><ShieldCheck size={16} /> User actions tracked</div>
+          </div>
+        </div>
+      )}
+
       {/* BI Charts Layer */}
       {canSeeFinancials && (
         <div className="dashboard-chart-grid">
@@ -115,6 +150,21 @@ export const Dashboard = ({ setActivePage }) => {
                   <RechartsTooltip formatter={(value) => formatCurrency(value, settings)} />
                   <Legend />
                 </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="card">
+            <h3 style={{ marginBottom: '1.5rem', fontWeight: '600' }}>Warehouse Value</h3>
+            <div style={{ width: '100%', height: 300 }}>
+              <ResponsiveContainer>
+                <BarChart data={kpis.warehouseValueBreakdown || []}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <RechartsTooltip formatter={(value) => formatCurrency(value, settings)} />
+                  <Bar dataKey="value" fill="#6B8E7E" name="Inventory Value" />
+                </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
@@ -156,6 +206,47 @@ export const Dashboard = ({ setActivePage }) => {
               <p style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{alerts.expiringCount}</p>
               <p style={{ fontSize: '0.875rem', color: 'var(--color-charcoal-light)' }}>{translate('trackedViaBatch')}</p>
             </div>
+
+            <div 
+              role="button"
+              onClick={() => setActivePage ? setActivePage('Inventory') : null}
+              style={{ backgroundColor: 'rgba(107, 142, 126, 0.08)', padding: '1.5rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+            >
+              <h4 style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Transfers In Transit</h4>
+              <p style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{alerts.inTransitTransferCount || 0}</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-charcoal-light)' }}>{alerts.inTransitUnits || 0} units waiting for reception.</p>
+            </div>
+
+            <div 
+              role="button"
+              onClick={() => setActivePage ? setActivePage('Human Resources') : null}
+              style={{ backgroundColor: 'rgba(46, 46, 46, 0.05)', padding: '1.5rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+            >
+              <h4 style={{ color: 'var(--color-charcoal)', fontWeight: 600 }}>Pending Payments</h4>
+              <p style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{alerts.pendingPaymentCount || 0}</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-charcoal-light)' }}>{formatCurrency(alerts.pendingPaymentValue || 0, settings)} pending.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {canSeeFinancials && kpis.recentActivity?.length > 0 && (
+        <div className="card" style={{ marginTop: '2rem' }}>
+          <h3 style={{ marginBottom: '1rem', fontWeight: 600 }}>Recent System Activity</h3>
+          <div className="table-container">
+            <table>
+              <thead><tr><th>Date</th><th>User</th><th>Action</th><th>Module</th></tr></thead>
+              <tbody>
+                {kpis.recentActivity.map((log) => (
+                  <tr key={log.id}>
+                    <td>{new Date(log.createdAt).toLocaleString()}</td>
+                    <td>{log.userName || log.userEmail || 'System'}</td>
+                    <td>{log.method} {log.path}</td>
+                    <td><span className="badge badge-primary">{log.entityType || '-'}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

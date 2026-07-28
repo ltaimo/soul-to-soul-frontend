@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { LayoutDashboard, Box, Package, ShoppingCart, Users, RefreshCw, ReceiptText, FileSpreadsheet, Settings, Shield, LogOut, HeartHandshake, X } from 'lucide-react';
+import { LayoutDashboard, Box, Package, ShoppingCart, Users, RefreshCw, ReceiptText, FileSpreadsheet, Settings, Shield, LogOut, HeartHandshake, Handshake, ShieldCheck, X } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import { LanguageContext } from '../../context/LanguageContext';
 import { canAccessPage, getRoleProfile } from '../../config/roles';
@@ -15,10 +15,12 @@ export const Sidebar = ({ activePage, setActivePage, mobileOpen = false, closeMo
     { id: 'Purchasing', name: t.purchasing, icon: <ShoppingCart size={20} /> },
     { id: 'Suppliers', name: t.suppliers, icon: <Users size={20} /> },
     { id: 'Customers', name: t.customers, icon: <HeartHandshake size={20} /> },
+    { id: 'Sellers & Resellers', name: t.sellersResellers, icon: <Handshake size={20} /> },
     { id: 'Human Resources', name: t.humanResources, icon: <Users size={20} /> },
     { id: 'Production', name: t.production, icon: <RefreshCw size={20} /> },
     { id: 'Sales / POS', name: t.salesPos, icon: <ReceiptText size={20} /> },
-    { id: 'Reporting', name: t.reporting, icon: <FileSpreadsheet size={20} /> }
+    { id: 'Reporting', name: t.reporting, icon: <FileSpreadsheet size={20} /> },
+    { id: 'Audit Logs', name: t.auditLogs, icon: <ShieldCheck size={20} /> }
   ];
 
   const adminMenuItems = [

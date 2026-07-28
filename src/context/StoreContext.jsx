@@ -10,12 +10,22 @@ export const StoreProvider = ({ children }) => {
   const [warehouseStock, setWarehouseStock] = useState([]);
   const [stockTransfers, setStockTransfers] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [commercialPartners, setCommercialPartners] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [hrPayments, setHrPayments] = useState([]);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [hrSummary, setHrSummary] = useState(null);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [settings, setSettings] = useState({
     companyName: 'Soul2Soul',
+    companyPhone: '',
+    companyWhatsApp: '',
+    companyEmail: '',
+    companyAddress: '',
+    companyWebsite: '',
+    instagramUrl: '',
+    facebookUrl: '',
+    tiktokUrl: '',
     defaultCurrency: 'MZN',
     currencySymbol: 'MT',
     decimalFormatting: 2,
@@ -40,6 +50,7 @@ export const StoreProvider = ({ children }) => {
   const { token, logout, user } = useContext(AuthContext);
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
   const canAccessHr = ['admin', 'manager'].includes(user?.role);
+  const canAccessAudit = ['admin', 'manager'].includes(user?.role);
 
   const fetchWithAuth = async (url, options = {}) => {
     const headers = { ...options.headers };
@@ -56,13 +67,14 @@ export const StoreProvider = ({ children }) => {
 
   const fetchItems = async () => {
     try {
-      const [prodRes, suppRes, warehousesRes, warehouseStockRes, transfersRes, customersRes, settingsRes] = await Promise.all([
+      const [prodRes, suppRes, warehousesRes, warehouseStockRes, transfersRes, customersRes, commercialPartnersRes, settingsRes] = await Promise.all([
         fetchWithAuth(`${apiBaseUrl}/api/products`),
         fetchWithAuth(`${apiBaseUrl}/api/inventory/suppliers`),
         fetchWithAuth(`${apiBaseUrl}/api/inventory/warehouses`),
         fetchWithAuth(`${apiBaseUrl}/api/inventory/warehouse-stock`),
         fetchWithAuth(`${apiBaseUrl}/api/inventory/transfers`),
         fetchWithAuth(`${apiBaseUrl}/api/customers`),
+        fetchWithAuth(`${apiBaseUrl}/api/commercial-partners`),
         fetchWithAuth(`${apiBaseUrl}/api/settings`)
       ]);
       const prods = await prodRes.json();
@@ -71,6 +83,7 @@ export const StoreProvider = ({ children }) => {
       const whStock = await warehouseStockRes.json();
       const transfers = await transfersRes.json();
       const custs = await customersRes.json();
+      const partners = await commercialPartnersRes.json();
       const stngs = await settingsRes.json();
       
       setProducts(prods);
@@ -79,6 +92,7 @@ export const StoreProvider = ({ children }) => {
       setWarehouseStock(whStock);
       setStockTransfers(transfers);
       setCustomers(custs);
+      setCommercialPartners(partners);
       setSettings(stngs);
 
       if (canAccessHr) {
@@ -97,6 +111,13 @@ export const StoreProvider = ({ children }) => {
         setHrPayments([]);
         setAttendanceRecords([]);
         setHrSummary(null);
+      }
+
+      if (canAccessAudit) {
+        const auditRes = await fetchWithAuth(`${apiBaseUrl}/api/audit-logs?take=200`);
+        setAuditLogs(await auditRes.json());
+      } else {
+        setAuditLogs([]);
       }
     } catch (e) {
       console.error("Failed to fetch initial data", e);
@@ -228,6 +249,22 @@ export const StoreProvider = ({ children }) => {
       return { success: true };
     } catch (e) {
       return { success: false, error: e.message || 'Failed to update minimum stock' };
+    }
+  };
+
+  const importWarehouseStock = async (data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/inventory/warehouse-stock/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true, summary: result.summary };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to import warehouse stock' };
     }
   };
 
@@ -416,6 +453,54 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
+  const createCommercialPartner = async (data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/commercial-partners`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true, partner: result.partner };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to create seller/reseller' };
+    }
+  };
+
+  const updateCommercialPartner = async (id, data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/commercial-partners/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to update seller/reseller' };
+    }
+  };
+
+  const updateCommercialPartnerStatus = async (id, status) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/commercial-partners/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to update seller/reseller status' };
+    }
+  };
+
   const updateSettings = async (data) => {
     try {
       const response = await fetchWithAuth(`${apiBaseUrl}/api/settings`, {
@@ -428,6 +513,23 @@ export const StoreProvider = ({ children }) => {
       return { success: true };
     } catch (e) {
       return { success: false, error: e.message || 'Failed to update settings' };
+    }
+  };
+
+  const fetchAuditLogs = async (filters = {}) => {
+    try {
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) params.set(key, value);
+      });
+      const query = params.toString() ? `?${params.toString()}` : '?take=200';
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/audit-logs${query}`);
+      if (!response.ok) throw await response.json();
+      const logs = await response.json();
+      setAuditLogs(logs);
+      return { success: true, logs };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to fetch audit logs' };
     }
   };
 
@@ -537,10 +639,12 @@ export const StoreProvider = ({ children }) => {
       warehouseStock,
       stockTransfers,
       customers,
+      commercialPartners,
       employees,
       hrPayments,
       attendanceRecords,
       hrSummary,
+      auditLogs,
       settings,
       totalInventoryValue,
       getMargin,
@@ -550,6 +654,7 @@ export const StoreProvider = ({ children }) => {
       updateWarehouse,
       updateWarehouseStatus,
       setWarehouseMinStock,
+      importWarehouseStock,
       createStockTransfer,
       confirmStockTransfer,
       cancelStockTransfer,
@@ -563,6 +668,9 @@ export const StoreProvider = ({ children }) => {
       createCustomer,
       updateCustomer,
       updateCustomerStatus,
+      createCommercialPartner,
+      updateCommercialPartner,
+      updateCommercialPartnerStatus,
       createEmployee,
       updateEmployee,
       updateEmployeeStatus,
@@ -570,6 +678,7 @@ export const StoreProvider = ({ children }) => {
       updateHrPaymentStatus,
       upsertAttendance,
       updateSettings,
+      fetchAuditLogs,
       refreshData: fetchItems
     }}>
       {children}

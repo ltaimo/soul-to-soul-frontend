@@ -8,12 +8,19 @@ import {
   ArrowRightLeft,
   ArrowUpFromLine,
   CheckCircle2,
+  Download,
+  Edit,
   FilterX,
   Plus,
+  ToggleLeft,
+  ToggleRight,
+  Trash2,
+  Upload,
   Warehouse,
   X,
 } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
+import { downloadCsv, parseCsv } from '../utils/csv';
 
 export const Inventory = ({ activeFilter }) => {
   const {
@@ -25,6 +32,10 @@ export const Inventory = ({ activeFilter }) => {
     receiveGoods,
     adjustStock,
     createWarehouse,
+    updateWarehouse,
+    updateWarehouseStatus,
+    setWarehouseMinStock,
+    importWarehouseStock,
     createStockTransfer,
     confirmStockTransfer,
     cancelStockTransfer,
@@ -42,16 +53,18 @@ export const Inventory = ({ activeFilter }) => {
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [showWarehouseModal, setShowWarehouseModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [editingWarehouseId, setEditingWarehouseId] = useState(null);
   const [receiveForm, setReceiveForm] = useState({ productId: '', warehouseId: '', quantity: '', landedCost: '' });
   const [adjustForm, setAdjustForm] = useState({ productId: '', warehouseId: '', quantity: '', reference: '' });
-  const [warehouseForm, setWarehouseForm] = useState({ name: '', code: '', type: 'Warehouse', address: '', notes: '' });
+  const [warehouseForm, setWarehouseForm] = useState({ name: '', code: '', type: 'Warehouse', address: '', notes: '', status: 'Active' });
   const [transferForm, setTransferForm] = useState({
     sourceWarehouseId: '',
     destinationWarehouseId: '',
-    productId: '',
-    quantity: '',
+    items: [{ productId: '', quantity: '' }],
     notes: '',
   });
+  const [importForm, setImportForm] = useState({ warehouseId: '', mode: 'set', rows: [], fileName: '' });
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -77,8 +90,8 @@ export const Inventory = ({ activeFilter }) => {
   const selectedAdjustStock = warehouseStock.find(
     (row) => row.productId === Number(adjustForm.productId) && row.warehouseId === Number(adjustForm.warehouseId || defaultWarehouseId),
   );
-  const selectedTransferStock = warehouseStock.find(
-    (row) => row.productId === Number(transferForm.productId) && row.warehouseId === Number(transferForm.sourceWarehouseId),
+  const transferStockFor = (productId) => warehouseStock.find(
+    (row) => row.productId === Number(productId) && row.warehouseId === Number(transferForm.sourceWarehouseId),
   );
 
   const openReceiveModal = (rowOrProduct = null) => {
@@ -105,6 +118,26 @@ export const Inventory = ({ activeFilter }) => {
       reference: '',
     });
     setShowAdjustModal(true);
+  };
+
+  const openWarehouseModal = (warehouse = null) => {
+    setErrorMsg('');
+    setSuccessMsg('');
+    if (warehouse) {
+      setEditingWarehouseId(warehouse.id);
+      setWarehouseForm({
+        name: warehouse.name || '',
+        code: warehouse.code || '',
+        type: warehouse.type || 'Warehouse',
+        address: warehouse.address || '',
+        notes: warehouse.notes || '',
+        status: warehouse.status || 'Active',
+      });
+    } else {
+      setEditingWarehouseId(null);
+      setWarehouseForm({ name: '', code: '', type: 'Warehouse', address: '', notes: '', status: 'Active' });
+    }
+    setShowWarehouseModal(true);
   };
 
   const submitReceive = async (event) => {
@@ -159,12 +192,37 @@ export const Inventory = ({ activeFilter }) => {
     if (!warehouseForm.name.trim()) return setErrorMsg('Warehouse name is required.');
 
     setSubmitting(true);
-    const result = await createWarehouse(warehouseForm);
+    const result = editingWarehouseId
+      ? await updateWarehouse(editingWarehouseId, warehouseForm)
+      : await createWarehouse(warehouseForm);
     setSubmitting(false);
     if (!result?.success) return setErrorMsg(result?.error || 'Could not create warehouse.');
-    setWarehouseForm({ name: '', code: '', type: 'Warehouse', address: '', notes: '' });
-    setSuccessMsg('Warehouse created successfully.');
+    setWarehouseForm({ name: '', code: '', type: 'Warehouse', address: '', notes: '', status: 'Active' });
+    setEditingWarehouseId(null);
+    setSuccessMsg(editingWarehouseId ? 'Warehouse updated successfully.' : 'Warehouse created successfully.');
     setShowWarehouseModal(false);
+  };
+
+  const toggleWarehouseStatus = async (warehouse) => {
+    setErrorMsg('');
+    setSuccessMsg('');
+    const nextStatus = warehouse.status === 'Active' ? 'Inactive' : 'Active';
+    const result = await updateWarehouseStatus(warehouse.id, nextStatus);
+    if (!result?.success) return setErrorMsg(result?.error || 'Could not update warehouse status.');
+    setSuccessMsg(`Warehouse marked as ${nextStatus}.`);
+  };
+
+  const updateMinStock = async (row) => {
+    const value = window.prompt(`Minimum stock for ${row.product?.name} in ${row.warehouse?.name}`, String(row.minStock ?? 0));
+    if (value === null) return;
+    const minStock = Number(value);
+    if (!Number.isInteger(minStock) || minStock < 0) {
+      setErrorMsg('Minimum stock must be a positive whole number or zero.');
+      return;
+    }
+    const result = await setWarehouseMinStock(row.warehouseId, row.productId, minStock);
+    if (!result?.success) return setErrorMsg(result?.error || 'Could not update minimum stock.');
+    setSuccessMsg('Minimum stock updated.');
   };
 
   const submitTransfer = async (event) => {
@@ -173,16 +231,24 @@ export const Inventory = ({ activeFilter }) => {
     setSuccessMsg('');
     const sourceWarehouseId = Number(transferForm.sourceWarehouseId);
     const destinationWarehouseId = Number(transferForm.destinationWarehouseId);
-    const productId = Number(transferForm.productId);
-    const quantity = Number(transferForm.quantity);
-    if (!sourceWarehouseId || !destinationWarehouseId || !productId || quantity <= 0) {
-      setErrorMsg('Select source, destination, product, and a positive quantity.');
+    const items = transferForm.items
+      .map((item) => ({ productId: Number(item.productId), quantity: Number(item.quantity) }))
+      .filter((item) => item.productId || item.quantity);
+    if (!sourceWarehouseId || !destinationWarehouseId || items.length === 0) {
+      setErrorMsg('Select source, destination, and at least one product.');
       return;
     }
     if (sourceWarehouseId === destinationWarehouseId) return setErrorMsg('Source and destination must be different.');
-    if (selectedTransferStock && selectedTransferStock.quantity < quantity) {
-      setErrorMsg(`Not enough stock in source warehouse. Available: ${selectedTransferStock.quantity}.`);
-      return;
+    for (const item of items) {
+      if (!item.productId || item.quantity <= 0 || !Number.isInteger(item.quantity)) {
+        setErrorMsg('Every transfer line needs a product and a positive whole quantity.');
+        return;
+      }
+      const sourceStock = transferStockFor(item.productId);
+      if ((sourceStock?.quantity || 0) < item.quantity) {
+        setErrorMsg(`Not enough stock for ${sourceStock?.product?.name || 'selected product'}. Available: ${sourceStock?.quantity || 0}.`);
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -190,16 +256,120 @@ export const Inventory = ({ activeFilter }) => {
       sourceWarehouseId,
       destinationWarehouseId,
       notes: transferForm.notes,
-      items: [{ productId, quantity }],
+      items,
     });
     setSubmitting(false);
     if (!result?.success) return setErrorMsg(result?.error || 'Could not create transfer.');
-    setTransferForm({ sourceWarehouseId: '', destinationWarehouseId: '', productId: '', quantity: '', notes: '' });
+    setTransferForm({ sourceWarehouseId: '', destinationWarehouseId: '', items: [{ productId: '', quantity: '' }], notes: '' });
     setSuccessMsg('Transfer created. Stock is now in transit.');
     setShowTransferModal(false);
   };
 
+  const updateTransferItem = (index, patch) => {
+    setTransferForm((current) => ({
+      ...current,
+      items: current.items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item),
+    }));
+  };
+
+  const addTransferItem = () => {
+    setTransferForm((current) => ({ ...current, items: [...current.items, { productId: '', quantity: '' }] }));
+  };
+
+  const selectAllTransferItems = () => {
+    const sourceWarehouseId = Number(transferForm.sourceWarehouseId);
+    if (!sourceWarehouseId) {
+      setErrorMsg('Select the origin warehouse first.');
+      return;
+    }
+    const rows = warehouseStock
+      .filter((row) => row.warehouseId === sourceWarehouseId && row.quantity > 0)
+      .map((row) => ({ productId: String(row.productId), quantity: String(row.quantity) }));
+    if (!rows.length) {
+      setErrorMsg('No available stock found in the selected origin warehouse.');
+      return;
+    }
+    setErrorMsg('');
+    setTransferForm((current) => ({ ...current, items: rows }));
+  };
+
+  const removeTransferItem = (index) => {
+    setTransferForm((current) => ({
+      ...current,
+      items: current.items.length === 1
+        ? [{ productId: '', quantity: '' }]
+        : current.items.filter((_, itemIndex) => itemIndex !== index),
+    }));
+  };
+
   const transferUnits = (transfer) => transfer.items?.reduce((acc, item) => acc + item.quantity, 0) || 0;
+
+  const exportWarehouseStock = (warehouseId = warehouseFilter) => {
+    const rows = warehouseStock
+      .filter((row) => warehouseId === 'all' || !warehouseId || row.warehouseId === Number(warehouseId))
+      .map((row) => ({
+        'Warehouse Code': row.warehouse?.code || '',
+        'Warehouse Name': row.warehouse?.name || '',
+        SKU: row.product?.sku || '',
+        'Product Name': row.product?.name || '',
+        Category: row.product?.category || '',
+        Type: row.product?.type || '',
+        Unit: row.product?.unit || 'pcs',
+        Quantity: row.quantity,
+        'Min Stock': row.minStock,
+        'Unit Cost': row.product?.costPrice || 0,
+        'Selling Price': row.product?.sellingPrice || 0,
+      }));
+    if (!rows.length) {
+      setErrorMsg('No stock rows available to export.');
+      return;
+    }
+    downloadCsv(rows, `Soul2Soul_Warehouse_Stock_${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
+  const openImportModal = () => {
+    setErrorMsg('');
+    setSuccessMsg('');
+    setImportForm({ warehouseId: String(defaultWarehouseId || ''), mode: 'set', rows: [], fileName: '' });
+    setShowImportModal(true);
+  };
+
+  const parseImportFile = async (file) => {
+    if (!file) return;
+    const rawRows = parseCsv(await file.text());
+    const rows = rawRows.map((row) => ({
+      sku: row.SKU || row.sku || '',
+      name: row['Product Name'] || row.Name || row.name || '',
+      category: row.Category || row.category || 'General',
+      type: row.Type || row.type || 'Finished Good',
+      unit: row.Unit || row.unit || 'pcs',
+      quantity: Number(row.Quantity ?? row.quantity ?? row.Stock ?? 0),
+      minStock: Number(row['Min Stock'] ?? row.minStock ?? row.Minimum ?? 0),
+      costPrice: Number(row['Unit Cost'] ?? row.Cost ?? row.costPrice ?? 0),
+      sellingPrice: Number(row['Selling Price'] ?? row.Price ?? row.sellingPrice ?? 0),
+      status: row.Status || row.status || 'Active',
+    })).filter((row) => row.sku || row.name);
+    setImportForm((current) => ({ ...current, fileName: file.name, rows }));
+  };
+
+  const submitImport = async (event) => {
+    event.preventDefault();
+    setErrorMsg('');
+    setSuccessMsg('');
+    if (!importForm.warehouseId) return setErrorMsg('Select the warehouse for this import.');
+    if (!importForm.rows.length) return setErrorMsg('Choose an Excel or CSV file with stock rows.');
+
+    setSubmitting(true);
+    const result = await importWarehouseStock({
+      warehouseId: Number(importForm.warehouseId),
+      mode: importForm.mode,
+      rows: importForm.rows,
+    });
+    setSubmitting(false);
+    if (!result.success) return setErrorMsg(result.error || 'Could not import stock.');
+    setSuccessMsg(`Import completed: ${result.summary.createdProducts} created, ${result.summary.updatedProducts} updated, ${result.summary.adjustedRows} stock rows adjusted.`);
+    setShowImportModal(false);
+  };
 
   return (
     <div>
@@ -216,6 +386,8 @@ export const Inventory = ({ activeFilter }) => {
           <div className="page-actions">
             <button className="btn btn-secondary" onClick={() => openReceiveModal()}><ArrowDownToLine size={18} /> {t.receiveStock}</button>
             <button className="btn btn-ghost" onClick={() => openAdjustModal()}><ArrowUpFromLine size={18} /> {t.adjustStock}</button>
+            <button className="btn btn-ghost" onClick={() => exportWarehouseStock()}><Download size={18} /> Export</button>
+            <button className="btn btn-ghost" onClick={openImportModal}><Upload size={18} /> Import</button>
             <button className="btn btn-primary" onClick={() => setShowTransferModal(true)}><ArrowRightLeft size={18} /> Transfer</button>
           </div>
         )}
@@ -267,6 +439,7 @@ export const Inventory = ({ activeFilter }) => {
                       <td className="row-actions">
                         <button className="btn btn-ghost compact-btn" onClick={() => openReceiveModal(row)}>Receive</button>
                         <button className="btn btn-ghost compact-btn" onClick={() => openAdjustModal(row)}>Adjust</button>
+                        <button className="btn btn-ghost compact-btn" onClick={() => updateMinStock(row)}>Min</button>
                       </td>
                     )}
                   </tr>
@@ -282,11 +455,11 @@ export const Inventory = ({ activeFilter }) => {
         <div className="card">
           <div className="section-heading">
             <h3>Storage locations</h3>
-            {canManageInventory && <button className="btn btn-primary" onClick={() => setShowWarehouseModal(true)}><Plus size={18} /> New warehouse</button>}
+            {canManageInventory && <button className="btn btn-primary" onClick={() => openWarehouseModal()}><Plus size={18} /> New warehouse</button>}
           </div>
           <div className="table-container">
             <table>
-              <thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Status</th><th>Products</th><th>Default</th></tr></thead>
+              <thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Status</th><th>Products</th><th>Default</th>{canManageInventory && <th>Actions</th>}</tr></thead>
               <tbody>
                 {warehouses.map((warehouse) => (
                   <tr key={warehouse.id}>
@@ -296,6 +469,20 @@ export const Inventory = ({ activeFilter }) => {
                     <td><span className={`badge ${warehouse.status === 'Active' ? 'badge-success' : 'badge-danger'}`}>{warehouse.status}</span></td>
                     <td>{warehouse._count?.stocks || 0}</td>
                     <td>{warehouse.isDefault ? 'Yes' : '-'}</td>
+                    {canManageInventory && (
+                      <td>
+                        <div className="row-actions">
+                          <button className="btn btn-ghost compact-btn" onClick={() => openWarehouseModal(warehouse)} title="Edit warehouse">
+                            <Edit size={16} />
+                          </button>
+                          {!warehouse.isDefault && (
+                            <button className="btn btn-ghost compact-btn" onClick={() => toggleWarehouseStatus(warehouse)} title="Change status">
+                              {warehouse.status === 'Active' ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -372,11 +559,11 @@ export const Inventory = ({ activeFilter }) => {
       )}
 
       {showWarehouseModal && (
-        <InventoryModal title="New warehouse" subtitle="Create a shop, warehouse, or storage location." onClose={() => setShowWarehouseModal(false)}>
+        <InventoryModal title={editingWarehouseId ? 'Edit warehouse' : 'New warehouse'} subtitle="Create or update a shop, warehouse, or storage location." onClose={() => setShowWarehouseModal(false)}>
           <form onSubmit={submitWarehouse}>
             <div className="receive-grid">
               <TextField label="Name" value={warehouseForm.name} onChange={(value) => setWarehouseForm({ ...warehouseForm, name: value })} required />
-              <TextField label="Code" value={warehouseForm.code} onChange={(value) => setWarehouseForm({ ...warehouseForm, code: value })} placeholder="Optional" />
+              <TextField label="Code" value={warehouseForm.code} onChange={(value) => setWarehouseForm({ ...warehouseForm, code: value })} placeholder="Optional" disabled={!!editingWarehouseId} />
             </div>
             <div className="receive-grid">
               <div className="form-group">
@@ -387,8 +574,15 @@ export const Inventory = ({ activeFilter }) => {
               </div>
               <TextField label="Address" value={warehouseForm.address} onChange={(value) => setWarehouseForm({ ...warehouseForm, address: value })} />
             </div>
+            <div className="form-group">
+              <label className="form-label">Status</label>
+              <select className="form-input" value={warehouseForm.status} onChange={(event) => setWarehouseForm({ ...warehouseForm, status: event.target.value })}>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
             <TextField label="Notes" value={warehouseForm.notes} onChange={(value) => setWarehouseForm({ ...warehouseForm, notes: value })} />
-            <ModalActions submitting={submitting} submitLabel="Create warehouse" onCancel={() => setShowWarehouseModal(false)} />
+            <ModalActions submitting={submitting} submitLabel={editingWarehouseId ? 'Save warehouse' : 'Create warehouse'} onCancel={() => setShowWarehouseModal(false)} />
           </form>
         </InventoryModal>
       )}
@@ -400,19 +594,98 @@ export const Inventory = ({ activeFilter }) => {
               <WarehouseSelect label="Origin" warehouses={activeWarehouses} value={transferForm.sourceWarehouseId} onChange={(value) => setTransferForm({ ...transferForm, sourceWarehouseId: value })} />
               <WarehouseSelect label="Destination" warehouses={activeWarehouses} value={transferForm.destinationWarehouseId} onChange={(value) => setTransferForm({ ...transferForm, destinationWarehouseId: value })} />
             </div>
-            <div className="receive-grid">
-              <div className="form-group">
-                <label className="form-label">Product</label>
-                <select className="form-input" value={transferForm.productId} onChange={(event) => setTransferForm({ ...transferForm, productId: event.target.value })} required>
-                  <option value="">Select product</option>
-                  {products.map((product) => <option key={product.id} value={product.id}>{product.sku} | {product.name}</option>)}
-                </select>
+            <div className="section-heading" style={{ marginTop: '1rem' }}>
+              <h3>Products to transfer</h3>
+              <div className="row-actions">
+                <button type="button" className="btn btn-secondary" onClick={selectAllTransferItems}>Select all from origin</button>
+                <button type="button" className="btn btn-secondary" onClick={addTransferItem}><Plus size={18} /> Add product</button>
               </div>
-              <NumberField label="Quantity" value={transferForm.quantity} onChange={(value) => setTransferForm({ ...transferForm, quantity: value })} min="1" />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {transferForm.items.map((item, index) => {
+                const sourceStock = transferStockFor(item.productId);
+                return (
+                  <div className="receive-grid" key={`transfer-line-${index}`} style={{ alignItems: 'end' }}>
+                    <div className="form-group">
+                      <label className="form-label">Product</label>
+                      <select className="form-input" value={item.productId} onChange={(event) => updateTransferItem(index, { productId: event.target.value })} required>
+                        <option value="">Select product</option>
+                        {products.map((product) => <option key={product.id} value={product.id}>{product.sku} | {product.name}</option>)}
+                      </select>
+                      <span className="table-muted">Available in origin: {sourceStock?.quantity ?? 0}</span>
+                    </div>
+                    <NumberField label="Quantity" value={item.quantity} onChange={(value) => updateTransferItem(index, { quantity: value })} min="1" />
+                    <button type="button" className="btn btn-ghost compact-btn" onClick={() => removeTransferItem(index)} title="Remove line">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
             <TextField label="Notes" value={transferForm.notes} onChange={(value) => setTransferForm({ ...transferForm, notes: value })} />
-            <Preview cards={[['Source available', selectedTransferStock?.quantity ?? 0], ['Moving', Number(transferForm.quantity) || 0], ['After dispatch', (selectedTransferStock?.quantity ?? 0) - (Number(transferForm.quantity) || 0)]]} />
+            <div className="receive-preview">
+              <div>
+                <span>Lines</span>
+                <strong>{transferForm.items.filter((item) => item.productId && Number(item.quantity) > 0).length}</strong>
+              </div>
+              <div>
+                <span>Total units</span>
+                <strong>{transferForm.items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)}</strong>
+              </div>
+            </div>
             <ModalActions submitting={submitting} submitLabel="Create Transfer" onCancel={() => setShowTransferModal(false)} />
+          </form>
+        </InventoryModal>
+      )}
+
+      {showImportModal && (
+        <InventoryModal title="Import warehouse stock" subtitle="Upload Excel or CSV to create/update products and set or add stock in one warehouse." onClose={() => setShowImportModal(false)}>
+          <form onSubmit={submitImport}>
+            <div className="receive-grid">
+              <WarehouseSelect label="Warehouse to update" warehouses={activeWarehouses} value={importForm.warehouseId} onChange={(value) => setImportForm({ ...importForm, warehouseId: value })} />
+              <div className="form-group">
+                <label className="form-label">Import mode</label>
+                <select className="form-input" value={importForm.mode} onChange={(event) => setImportForm({ ...importForm, mode: event.target.value })}>
+                  <option value="set">Set stock to file quantity</option>
+                  <option value="add">Add file quantity to current stock</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Excel / CSV file</label>
+              <input
+                className="form-input"
+                type="file"
+                accept=".csv"
+                onChange={(event) => parseImportFile(event.target.files?.[0])}
+                required
+              />
+              <span className="table-muted">Columns accepted: SKU, Product Name, Category, Type, Unit, Quantity, Min Stock, Unit Cost, Selling Price.</span>
+            </div>
+            <div className="receive-preview">
+              <div><span>File</span><strong>{importForm.fileName || '-'}</strong></div>
+              <div><span>Rows detected</span><strong>{importForm.rows.length}</strong></div>
+              <div><span>Valid rows</span><strong>{importForm.rows.filter((row) => row.sku && row.name && Number.isInteger(row.quantity) && row.quantity >= 0).length}</strong></div>
+            </div>
+            {importForm.rows.length > 0 && (
+              <div className="table-container" style={{ maxHeight: 260 }}>
+                <table>
+                  <thead><tr><th>SKU</th><th>Product</th><th>Qty</th><th>Cost</th><th>Min</th></tr></thead>
+                  <tbody>
+                    {importForm.rows.slice(0, 8).map((row, index) => (
+                      <tr key={`${row.sku}-${index}`}>
+                        <td>{row.sku}</td>
+                        <td>{row.name}</td>
+                        <td>{row.quantity}</td>
+                        <td>{row.costPrice}</td>
+                        <td>{row.minStock}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <ModalActions submitting={submitting} submitLabel="Import Stock" onCancel={() => setShowImportModal(false)} />
           </form>
         </InventoryModal>
       )}

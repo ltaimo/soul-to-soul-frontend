@@ -1,5 +1,6 @@
-import React, { useContext, useMemo, useState } from 'react';
-import { CheckCircle2, Edit, MessageCircle, Plus, Search, ToggleLeft, ToggleRight, X } from 'lucide-react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
+import QRCode from 'qrcode';
+import { AtSign, CheckCircle2, Copy, CreditCard, Edit, Globe, Mail, MessageCircle, Phone, Plus, Printer, Search, Share2, ToggleLeft, ToggleRight, X } from 'lucide-react';
 import { StoreContext } from '../context/StoreContext';
 import { AuthContext } from '../context/AuthContext';
 
@@ -28,8 +29,10 @@ const whatsappHref = (phone, message) => {
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 };
 
+const getCustomerCode = (customer) => customer.customerCode || `CUST-${String(customer.id).padStart(5, '0')}`;
+
 export const Customers = () => {
-  const { customers, createCustomer, updateCustomer, updateCustomerStatus } = useContext(StoreContext);
+  const { customers, createCustomer, updateCustomer, updateCustomerStatus, settings } = useContext(StoreContext);
   const { user } = useContext(AuthContext);
   const canManageCustomers = ['admin', 'manager'].includes(user?.role);
   const canCreateCustomers = ['admin', 'manager', 'cashier', 'salesperson', 'staff'].includes(user?.role);
@@ -40,6 +43,37 @@ export const Customers = () => {
   const [formData, setFormData] = useState(initialCustomerForm);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [cardCustomer, setCardCustomer] = useState(null);
+  const [qrDataUrl, setQrDataUrl] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    const code = cardCustomer ? getCustomerCode(cardCustomer) : '';
+    if (!code) {
+      setQrDataUrl('');
+      return;
+    }
+
+    QRCode.toDataURL(code, {
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      width: 220,
+      color: {
+        dark: '#2E2E2E',
+        light: '#FFFFFF',
+      },
+    })
+      .then((url) => {
+        if (active) setQrDataUrl(url);
+      })
+      .catch(() => {
+        if (active) setQrDataUrl('');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [cardCustomer]);
 
   const filteredCustomers = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -103,6 +137,127 @@ export const Customers = () => {
       return;
     }
     setSuccessMsg(`Customer marked as ${nextStatus}.`);
+  };
+
+  const copyCustomerCode = async (customer) => {
+    const code = getCustomerCode(customer);
+    try {
+      await navigator.clipboard.writeText(code);
+      setSuccessMsg(`Customer code ${code} copied.`);
+    } catch {
+      setErrorMsg('Could not copy customer code.');
+    }
+  };
+
+  const printLoyaltyCard = () => {
+    if (!cardCustomer) return;
+    const code = getCustomerCode(cardCustomer);
+    const company = getCompanyCardInfo(settings);
+    const safe = (value) => escapeHtml(value);
+    const pill = (label, value) => value ? `<div class="pill"><span>${safe(label)}</span><strong>${safe(value)}</strong></div>` : '';
+    const socialRows = [
+      pill('IG', company.instagram),
+      pill('FB', company.facebook),
+      pill('TT', company.tiktok),
+      pill('WEB', company.website),
+    ].filter(Boolean).join('');
+    const contactRows = [
+      pill('TEL', company.phone),
+      pill('WA', company.whatsapp),
+      pill('MAIL', company.email),
+      pill('SHOP', company.address),
+    ].filter(Boolean).join('');
+    const win = window.open('', '_blank', 'width=520,height=720');
+    win.document.write(`
+      <html>
+        <head>
+          <title>${safe(company.name)} Loyalty Card - ${safe(code)}</title>
+          <style>
+            @page { size: A4; margin: 12mm; }
+            * { box-sizing: border-box; }
+            body { font-family: Georgia, 'Times New Roman', serif; background: #F7F3EA; padding: 20px; color: #332116; }
+            .sheet { display: grid; gap: 12mm; justify-content: center; }
+            .print-note { text-align: center; margin: 0 0 18px; color: #5A5A5A; }
+            .card-side { width: 85.6mm; height: 54mm; border-radius: 4mm; overflow: hidden; position: relative; box-shadow: 0 14px 34px rgba(45, 30, 18, .18); page-break-inside: avoid; border: .45mm solid #6F7722; }
+            .card-side:before, .card-side:after { content: ""; position: absolute; border-radius: 999px; pointer-events: none; }
+            .front { color: #332116; background:
+              radial-gradient(circle at 15% 18%, rgba(229, 166, 44, .28) 0 10mm, transparent 11mm),
+              radial-gradient(circle at 84% 82%, rgba(111, 119, 34, .20) 0 13mm, transparent 14mm),
+              linear-gradient(145deg, #FFFDF7 0%, #F3E6C8 54%, #E7D2A9 100%);
+              padding: 4.5mm; }
+            .front:before { width: 54mm; height: 54mm; right: -22mm; top: -22mm; border: .6mm solid rgba(111, 119, 34, .28); }
+            .front:after { width: 52mm; height: 22mm; left: -14mm; bottom: -9mm; border-top: .7mm solid rgba(125, 73, 31, .38); transform: rotate(-8deg); }
+            .back { background:
+              linear-gradient(90deg, rgba(111, 119, 34, .12), transparent 32%),
+              linear-gradient(145deg, #FFFDF7 0%, #F8F0DC 100%);
+              color: #332116; padding: 4.5mm; border-color: #7D491F; }
+            .back:before { width: 42mm; height: 42mm; right: -18mm; bottom: -18mm; border: .6mm solid rgba(125, 73, 31, .18); }
+            .botanical { position: absolute; pointer-events: none; opacity: .55; }
+            .stem { width: 24mm; height: .35mm; background: #6F7722; transform-origin: left center; }
+            .leaf { position: absolute; width: 6mm; height: 2.8mm; background: linear-gradient(90deg, #879247, #46521F); border-radius: 100% 0 100% 0; transform-origin: left center; }
+            .botanical-a { left: 3mm; top: 3mm; transform: rotate(-24deg); }
+            .botanical-b { right: -1mm; bottom: 8mm; transform: rotate(148deg); }
+            .botanical-c { right: 3mm; bottom: 3mm; transform: rotate(142deg); opacity: .46; }
+            .leaf:nth-child(2) { left: 5mm; top: -2.1mm; transform: rotate(-28deg); }
+            .leaf:nth-child(3) { left: 10mm; top: 1mm; transform: rotate(24deg); }
+            .leaf:nth-child(4) { left: 15mm; top: -2mm; transform: rotate(-24deg); }
+            .logo-wrap { width: 38mm; height: 20mm; display: grid; place-items: center; background: rgba(255,255,255,.72); border: .25mm solid rgba(111,119,34,.28); border-radius: 4mm; }
+            .logo { max-width: 34mm; max-height: 17mm; object-fit: contain; mix-blend-mode: multiply; }
+            .brand { position: absolute; top: 5mm; right: 5mm; width: 35mm; text-align: right; font-size: 7.5pt; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: #6F7722; }
+            .subtitle { position: absolute; top: 13mm; right: 5mm; font-size: 5.8pt; color: #7D491F; text-transform: uppercase; letter-spacing: .14em; }
+            .name { margin-top: 6.2mm; max-width: 49mm; font-size: 10pt; font-weight: 700; color: #332116; }
+            .tier { margin-top: 1.2mm; max-width: 45mm; color: #6F7722; font-size: 6.6pt; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+            .qr { width: 22mm; height: 22mm; padding: 1.4mm; background: white; border: .35mm solid #7D491F; border-radius: 3.4mm; position: absolute; right: 5mm; bottom: 8mm; }
+            .code { position: absolute; left: 5mm; bottom: 8mm; max-width: 47mm; color: #4B2A16; font-size: 9pt; font-weight: 800; letter-spacing: .12em; }
+            .hint { position: absolute; left: 5mm; right: 5mm; bottom: 3.2mm; font-size: 5.5pt; color: #6B5B43; }
+            .back-logo { width: 23mm; max-height: 11mm; object-fit: contain; mix-blend-mode: multiply; }
+            .back h2 { position: absolute; top: 4.5mm; right: 4.5mm; margin: 0; max-width: 48mm; text-align: right; font-size: 8.5pt; color: #6F7722; letter-spacing: .12em; text-transform: uppercase; }
+            .section-title { margin: 4mm 0 1.8mm; color: #7D491F; font-size: 5.7pt; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+            .info { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5mm; font-size: 5.8pt; }
+            .pill { min-height: 8mm; padding: 1.4mm 1.7mm; border-radius: 2.2mm; background: rgba(255,255,255,.64); border: .25mm solid rgba(111,119,34,.22); }
+            .pill span { display: block; color: #6F7722; font-weight: 800; font-size: 5pt; letter-spacing: .12em; }
+            .pill strong { display: block; margin-top: .7mm; font-weight: 700; overflow-wrap: anywhere; line-height: 1.15; }
+            .small { position: absolute; left: 4.5mm; right: 4.5mm; bottom: 3.5mm; color: #6B5B43; font-size: 5.3pt; line-height: 1.32; border-top: .25mm solid rgba(125,73,31,.24); padding-top: 1.5mm; }
+            button { width: 85.6mm; display: block; margin: 18px auto 0; padding: 12px; border: 0; border-radius: 12px; cursor: pointer; }
+            @media print {
+              body { background: white; padding: 0; }
+              .print-note, button { display: none; }
+              .card-side { box-shadow: none; break-inside: avoid; }
+            }
+          </style>
+        </head>
+        <body>
+          <p class="print-note">Standard loyalty/PVC card size: 85.6mm x 54mm. Print front and back, then cut/laminate or send to PVC production.</p>
+          <div class="sheet">
+            <section class="card-side front">
+              <div class="botanical botanical-a"><div class="stem"></div><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i></div>
+              <div class="botanical botanical-b"><div class="stem"></div><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i></div>
+              ${company.logo ? `<div class="logo-wrap"><img class="logo" src="${safe(company.logo)}" alt="${safe(company.name)}" /></div>` : ''}
+              <div class="brand">${safe(company.name)}</div>
+              <div class="subtitle">Loyalty Card</div>
+              <div class="name">${safe(cardCustomer.fullName)}</div>
+              <div class="tier">${safe(cardCustomer.loyaltyTier || 'Standard')} | ${Number(cardCustomer.loyaltyPoints || 0)} points</div>
+              ${qrDataUrl ? `<img class="qr" src="${qrDataUrl}" alt="QR Code" />` : ''}
+              <div class="code">${safe(code)}</div>
+              <div class="hint">Scan or type this code at checkout to add or redeem points.</div>
+            </section>
+            <section class="card-side back">
+              <div class="botanical botanical-c"><div class="stem"></div><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i></div>
+              ${company.logo ? `<img class="back-logo" src="${safe(company.logo)}" alt="${safe(company.name)}" />` : ''}
+              <h2>${safe(company.name)}</h2>
+              <div class="section-title">Contact</div>
+              <div class="info">${contactRows || '<div class="pill"><span>CONTACT</span><strong>Update company contacts in Settings</strong></div>'}</div>
+              <div class="section-title">Social</div>
+              <div class="info">${socialRows || '<div class="pill"><span>SOCIAL</span><strong>Add social media in Settings</strong></div>'}</div>
+              <div class="small">This loyalty card is personal. Present the QR code or customer ID during purchase to collect and redeem points.</div>
+            </section>
+          </div>
+          <button onclick="window.print()">Print / Save PDF</button>
+        </body>
+      </html>
+    `);
+    win.document.close();
+    win.focus();
   };
 
   return (
@@ -181,6 +336,12 @@ export const Customers = () => {
                   {canManageCustomers && (
                     <td>
                       <div className="row-actions">
+                        <button className="btn btn-ghost compact-btn" onClick={() => setCardCustomer(customer)} title="View loyalty card">
+                          <CreditCard size={16} />
+                        </button>
+                        <button className="btn btn-ghost compact-btn" onClick={() => copyCustomerCode(customer)} title="Copy loyalty code">
+                          <Copy size={16} />
+                        </button>
                         <button className="btn btn-ghost compact-btn" onClick={() => openEdit(customer)} title="Edit customer">
                           <Edit size={16} />
                         </button>
@@ -284,6 +445,81 @@ export const Customers = () => {
           </div>
         </div>
       )}
+
+      {cardCustomer && (
+        <div className="modal-backdrop">
+          <div className="modal-card receipt-modal">
+            <div className="modal-header">
+              <div>
+                <h2>Loyalty Card</h2>
+                <p>{cardCustomer.fullName} | {getCustomerCode(cardCustomer)}</p>
+              </div>
+              <button className="icon-button" onClick={() => setCardCustomer(null)}><X size={20} /></button>
+            </div>
+
+            <div className="loyalty-card-preview-grid">
+              <div className="loyalty-card-preview loyalty-card-preview-front">
+                <div className="loyalty-leaf loyalty-leaf-a"></div>
+                <div className="loyalty-leaf loyalty-leaf-b"></div>
+                <img className="loyalty-card-logo" src={settings?.companyLogo || '/logo.png'} alt={settings?.companyName || 'Soul2Soul'} />
+                <div className="loyalty-card-brand">{settings?.companyName || 'Soul2Soul'}</div>
+                <div className="loyalty-card-subtitle">Natureza. Conexao. Equilibrio.</div>
+                <div className="loyalty-card-title">Cartao de Fidelidade</div>
+                <div className="loyalty-card-name">{cardCustomer.fullName}</div>
+                <div className="loyalty-card-tier">{cardCustomer.loyaltyTier || 'Standard'} | {cardCustomer.loyaltyPoints || 0} points</div>
+                {qrDataUrl ? <img className="loyalty-card-qr" src={qrDataUrl} alt="Customer QR code" /> : <div className="loyalty-card-qr-placeholder">Generating QR...</div>}
+                <div className="loyalty-card-code">{getCustomerCode(cardCustomer)}</div>
+                <div className="loyalty-card-hint">Scan or type this code at checkout.</div>
+              </div>
+
+              <div className="loyalty-card-preview loyalty-card-preview-back">
+                <div className="loyalty-card-back-logo-row">
+                  <img className="loyalty-card-back-logo" src={settings?.companyLogo || '/logo.png'} alt={settings?.companyName || 'Soul2Soul'} />
+                  <strong>{settings?.companyName || 'Soul2Soul'}</strong>
+                </div>
+                <div className="loyalty-card-back-message">Obrigado por fazer parte da familia Soul2Soul.</div>
+                <div className="loyalty-card-contact-preview">
+                  {settings?.companyPhone && <span><Phone size={14} /> {settings.companyPhone}</span>}
+                  {settings?.companyWhatsApp && <span><MessageCircle size={14} /> {settings.companyWhatsApp}</span>}
+                  {settings?.companyEmail && <span><Mail size={14} /> {settings.companyEmail}</span>}
+                  {settings?.companyWebsite && <span><Globe size={14} /> {settings.companyWebsite}</span>}
+                  {settings?.instagramUrl && <span><AtSign size={14} /> {settings.instagramUrl}</span>}
+                  {settings?.facebookUrl && <span><Share2 size={14} /> {settings.facebookUrl}</span>}
+                  {settings?.tiktokUrl && <span><AtSign size={14} /> {settings.tiktokUrl}</span>}
+                  {!settings?.companyPhone && !settings?.companyWhatsApp && !settings?.companyEmail && !settings?.companyWebsite && !settings?.instagramUrl && !settings?.facebookUrl && !settings?.tiktokUrl && (
+                    <span>Add contacts and social media in Settings.</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="receipt-actions">
+              <button className="btn btn-secondary" type="button" onClick={() => copyCustomerCode(cardCustomer)}><Copy size={18} /> Copy ID</button>
+              <button className="btn btn-primary" type="button" onClick={printLoyaltyCard}><Printer size={18} /> Print Card</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+const getCompanyCardInfo = (settings = {}) => ({
+  name: settings.companyName || 'Soul2Soul',
+  logo: settings.companyLogo || '/logo.png',
+  phone: settings.companyPhone || '',
+  whatsapp: settings.companyWhatsApp || '',
+  email: settings.companyEmail || '',
+  address: settings.companyAddress || '',
+  website: settings.companyWebsite || '',
+  instagram: settings.instagramUrl || '',
+  facebook: settings.facebookUrl || '',
+  tiktok: settings.tiktokUrl || '',
+});
+
+const escapeHtml = (value) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#039;');

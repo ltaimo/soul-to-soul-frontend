@@ -32,6 +32,10 @@ const initialPaymentForm = {
   description: '',
   amount: 0,
   dueDate: new Date().toISOString().slice(0, 10),
+  periodicity: 'One-time',
+  occurrences: 1,
+  periodStart: '',
+  periodEnd: '',
   method: '',
   status: 'Pending',
   notes: '',
@@ -63,6 +67,8 @@ const formatDate = (value) => {
   if (!value) return '-';
   return new Intl.DateTimeFormat('en-GB').format(new Date(value));
 };
+
+const paymentPeriodicities = ['One-time', 'Daily', 'Weekly', 'Monthly', 'Quarterly', 'Yearly'];
 
 export const HumanResources = () => {
   const {
@@ -177,11 +183,13 @@ export const HumanResources = () => {
   const openPaymentModal = (employee = null) => {
     setErrorMsg('');
     setStatusMsg('');
+    const employeeFrequency = paymentPeriodicities.includes(employee?.payFrequency) ? employee.payFrequency : 'One-time';
     setPaymentForm({
       ...initialPaymentForm,
       employeeId: employee?.id || '',
       description: employee ? `Salary payment - ${employee.fullName}` : '',
       amount: employee?.salary || 0,
+      periodicity: employee ? employeeFrequency : 'One-time',
     });
     setModal('payment');
   };
@@ -222,7 +230,7 @@ export const HumanResources = () => {
       setErrorMsg(result.error || 'Could not save payment.');
       return;
     }
-    setStatusMsg('Payment recorded.');
+    setStatusMsg(paymentForm.periodicity === 'One-time' || Number(paymentForm.occurrences) <= 1 ? 'Payment recorded.' : 'Payment schedule created.');
     closeModal();
   };
 
@@ -369,6 +377,8 @@ export const HumanResources = () => {
                   <th>Type</th>
                   <th>Worker</th>
                   <th>Due</th>
+                  <th>Periodicity</th>
+                  <th>Next Due</th>
                   <th>Amount</th>
                   <th>Status</th>
                   <th>Action</th>
@@ -381,6 +391,8 @@ export const HumanResources = () => {
                     <td><span className="badge badge-primary">{payment.type}</span></td>
                     <td>{payment.employee?.fullName || '-'}</td>
                     <td>{formatDate(payment.dueDate)}</td>
+                    <td>{payment.periodicity || 'One-time'}</td>
+                    <td>{formatDate(payment.nextDueDate)}</td>
                     <td>{formatCurrency(payment.amount, settings)}</td>
                     <td><span className={`badge ${payment.status === 'Paid' ? 'badge-success' : 'badge-warning'}`}>{payment.status}</span></td>
                     <td>
@@ -392,7 +404,7 @@ export const HumanResources = () => {
                 ))}
                 {hrPayments.length === 0 && (
                   <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>No payments recorded.</td>
+                    <td colSpan="9" style={{ textAlign: 'center', padding: '2rem' }}>No payments recorded.</td>
                   </tr>
                 )}
               </tbody>
@@ -618,6 +630,44 @@ export const HumanResources = () => {
                     <option value="Paid">Paid</option>
                     <option value="Cancelled">Cancelled</option>
                   </select>
+                </div>
+              </div>
+              <div className="receive-grid">
+                <div className="form-group">
+                  <label className="form-label">Periodicity</label>
+                  <select
+                    className="form-input"
+                    value={paymentForm.periodicity}
+                    onChange={(event) => setPaymentForm({
+                      ...paymentForm,
+                      periodicity: event.target.value,
+                      occurrences: event.target.value === 'One-time' ? 1 : paymentForm.occurrences,
+                    })}
+                  >
+                    {paymentPeriodicities.map((periodicity) => <option key={periodicity} value={periodicity}>{periodicity}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Occurrences</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="36"
+                    className="form-input"
+                    value={paymentForm.occurrences}
+                    disabled={paymentForm.periodicity === 'One-time'}
+                    onChange={(event) => setPaymentForm({ ...paymentForm, occurrences: event.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="receive-grid">
+                <div className="form-group">
+                  <label className="form-label">Period Start</label>
+                  <input type="date" className="form-input" value={paymentForm.periodStart} onChange={(event) => setPaymentForm({ ...paymentForm, periodStart: event.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Period End</label>
+                  <input type="date" className="form-input" value={paymentForm.periodEnd} onChange={(event) => setPaymentForm({ ...paymentForm, periodEnd: event.target.value })} />
                 </div>
               </div>
               <div className="form-group">

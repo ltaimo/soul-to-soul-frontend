@@ -20,7 +20,7 @@ import { formatCurrency } from '../utils/formatters';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 export const SalesInsights = () => {
-  const { products, customers, warehouses, warehouseStock, settings, refreshData } = useContext(StoreContext);
+  const { products, customers, commercialPartners, warehouses, warehouseStock, settings, refreshData } = useContext(StoreContext);
   const { token, logout, user } = useContext(AuthContext);
   const { language, t } = useContext(LanguageContext);
   const [salesRecord, setSalesRecord] = useState([]);
@@ -33,6 +33,10 @@ export const SalesInsights = () => {
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [selectedCommercialPartnerId, setSelectedCommercialPartnerId] = useState('');
+  const [saleChannel, setSaleChannel] = useState('Store');
+  const [orderReference, setOrderReference] = useState('');
+  const [fulfillmentStatus, setFulfillmentStatus] = useState('Delivered');
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
   const [amountPaid, setAmountPaid] = useState('');
   const [lastReceipt, setLastReceipt] = useState(null);
@@ -43,6 +47,9 @@ export const SalesInsights = () => {
   const defaultWarehouseId = activeWarehouses.find((warehouse) => warehouse.isDefault)?.id || activeWarehouses[0]?.id || '';
   const fulfillmentWarehouseId = Number(selectedWarehouseId || defaultWarehouseId);
   const paymentMethods = settings?.paymentMethodsList?.length ? settings.paymentMethodsList : ['Cash', 'M-Pesa', 'E-Mola', 'Card', 'Bank Transfer'];
+  const activeCommercialPartners = commercialPartners.filter((partner) => partner.status !== 'Inactive');
+  const saleChannels = ['Store', 'Online', 'Order', 'Reseller'];
+  const fulfillmentStatuses = ['Delivered', 'Pending', 'In Transit', 'Pickup'];
 
   const fetchWithAuth = async (url, options = {}) => {
     const headers = { ...options.headers, Authorization: `Bearer ${token}` };
@@ -122,6 +129,7 @@ export const SalesInsights = () => {
   );
 
   const selectedCustomer = customers.find((customer) => customer.id === Number(selectedCustomerId));
+  const selectedCommercialPartner = activeCommercialPartners.find((partner) => partner.id === Number(selectedCommercialPartnerId));
   const loyaltyDiscountRate = selectedCustomer?.discountPercent ? selectedCustomer.discountPercent / 100 : 0;
   const discountAmount = totals.revenue * loyaltyDiscountRate;
   const payingWithPoints = paymentMethod === 'Points';
@@ -134,6 +142,22 @@ export const SalesInsights = () => {
   const changeGiven = Math.max(0, effectivePaidAmount - saleRevenue);
   const hasPaymentIssue = paymentMethod === 'Cash' && cart.length > 0 && paidAmount < saleRevenue;
   const hasPointsIssue = payingWithPoints && (!selectedCustomer || totals.redemptionPointsCost <= 0 || (selectedCustomer.loyaltyPoints || 0) < totals.redemptionPointsCost);
+
+  const handleCommercialPartnerChange = (partnerId) => {
+    setSelectedCommercialPartnerId(partnerId);
+    const partner = activeCommercialPartners.find((item) => item.id === Number(partnerId));
+    if (!partner) {
+      setSaleChannel('Store');
+      return;
+    }
+    if (partner.defaultSaleChannel) {
+      setSaleChannel(partner.defaultSaleChannel);
+      setFulfillmentStatus(['Online', 'Order'].includes(partner.defaultSaleChannel) ? 'Pending' : 'Delivered');
+    }
+    if (partner.warehouseId && cart.length === 0) {
+      setSelectedWarehouseId(String(partner.warehouseId));
+    }
+  };
 
   const findCustomerByCode = () => {
     const query = customerCodeSearch.trim().toLowerCase();
@@ -316,6 +340,10 @@ export const SalesInsights = () => {
           amountPaid: effectivePaidAmount,
           redeemPoints: payingWithPoints,
           warehouseId: fulfillmentWarehouseId,
+          commercialPartnerId: selectedCommercialPartnerId ? Number(selectedCommercialPartnerId) : undefined,
+          channel: saleChannel,
+          orderReference,
+          fulfillmentStatus,
           items: cart.map((line) => ({ productId: line.productId, quantity: line.quantity })),
         }),
       });
@@ -334,6 +362,10 @@ export const SalesInsights = () => {
       setCustomerName('');
       setCustomerEmail('');
       setCustomerPhone('');
+      setSelectedCommercialPartnerId('');
+      setSaleChannel('Store');
+      setOrderReference('');
+      setFulfillmentStatus('Delivered');
       setAmountPaid('');
       setSelectedWarehouseId('');
       await Promise.all([refreshData(), fetchSales()]);
@@ -469,7 +501,52 @@ export const SalesInsights = () => {
                 {selectedCustomer.discountPercent > 0 && <span>{selectedCustomer.discountPercent}% discount applied</span>}
               </div>
             )}
-            <div className="seller-chip">{t.seller}: <strong>{user?.fullName || user?.email}</strong></div>
+            <div className="form-group">
+              <label className="form-label">Seller / Reseller</label>
+              <select className="form-input" value={selectedCommercialPartnerId} onChange={(event) => handleCommercialPartnerChange(event.target.value)}>
+                <option value="">Direct store sale - {user?.fullName || user?.email}</option>
+                {activeCommercialPartners.map((partner) => (
+                  <option key={partner.id} value={partner.id}>
+                    {partner.name} | {partner.type} | {partner.agreementType || 'Direct Sale'} | {Number(partner.commissionRate || 0).toFixed(2)}%
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="payment-grid">
+              <div className="form-group">
+                <label className="form-label">Sale Channel</label>
+                <select
+                  className="form-input"
+                  value={saleChannel}
+                  onChange={(event) => {
+                    setSaleChannel(event.target.value);
+                    setFulfillmentStatus(['Online', 'Order'].includes(event.target.value) ? 'Pending' : 'Delivered');
+                  }}
+                >
+                  {saleChannels.map((channel) => <option key={channel} value={channel}>{channel}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Fulfillment Status</label>
+                <select className="form-input" value={fulfillmentStatus} onChange={(event) => setFulfillmentStatus(event.target.value)}>
+                  {fulfillmentStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Order / Reseller Reference</label>
+              <input
+                className="form-input"
+                value={orderReference}
+                onChange={(event) => setOrderReference(event.target.value)}
+                placeholder="Online order, reseller batch, invoice, or coordination code"
+              />
+            </div>
+            <div className="seller-chip">
+              {t.seller}: <strong>{selectedCommercialPartner?.name || user?.fullName || user?.email}</strong>
+              {selectedCommercialPartner && <span>{selectedCommercialPartner.type} - {selectedCommercialPartner.agreementType || 'Direct Sale'} - {Number(selectedCommercialPartner.commissionRate || 0).toFixed(2)}% commission</span>}
+            </div>
+            {selectedCommercialPartner?.paymentTerms && <div className="seller-chip">Terms: <span>{selectedCommercialPartner.paymentTerms}</span></div>}
             <div className="seller-chip">Warehouse: <strong>{activeWarehouses.find((warehouse) => warehouse.id === fulfillmentWarehouseId)?.name || '-'}</strong></div>
 
             <div className="cart-lines">
@@ -566,6 +643,9 @@ export const SalesInsights = () => {
                 <th>{t.units}</th>
                 <th>{t.revenue}</th>
                 <th>{t.seller}</th>
+                <th>Channel</th>
+                <th>Status</th>
+                <th>Commission</th>
                 <th>Warehouse</th>
                 <th>{t.paymentMethod}</th>
                 <th>COGS</th>
@@ -575,7 +655,7 @@ export const SalesInsights = () => {
             </thead>
             <tbody>
               {salesRecord.length === 0 ? (
-                <tr><td colSpan="10" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-charcoal-light)' }}>No sales logged yet.</td></tr>
+                <tr><td colSpan="13" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-charcoal-light)' }}>No sales logged yet.</td></tr>
               ) : (
                 salesRecord.map((sale) => {
                   const saleDate = new Date(sale.date);
@@ -588,6 +668,9 @@ export const SalesInsights = () => {
                       <td>{units}</td>
                       <td style={{ fontWeight: 600 }}>{formatCurrency(sale.totalRevenue, settings)}</td>
                       <td>{sale.sellerName || '-'}</td>
+                      <td>{sale.channel || 'Store'}{sale.orderReference ? <span className="table-muted">{sale.orderReference}</span> : null}</td>
+                      <td>{sale.fulfillmentStatus || 'Delivered'}</td>
+                      <td>{sale.commissionAmount ? formatCurrency(sale.commissionAmount, settings) : '-'}</td>
                       <td>{sale.warehouseName || sale.warehouse?.name || '-'}</td>
                       <td>{sale.paymentMethod || 'Cash'}</td>
                       <td>{formatCurrency(sale.totalCogs, settings)}</td>
@@ -617,6 +700,7 @@ export const SalesInsights = () => {
               <img src="/logo.png" alt="Soul to Soul" />
               <div className="receipt-meta"><span>{t.customer}</span><strong>{lastReceipt.customerName || t.retailCustomer}</strong></div>
               <div className="receipt-meta"><span>{t.seller}</span><strong>{lastReceipt.sellerName || user?.fullName || user?.email}</strong></div>
+              <div className="receipt-meta"><span>Channel</span><strong>{lastReceipt.channel || 'Store'}{lastReceipt.orderReference ? ` | ${lastReceipt.orderReference}` : ''}</strong></div>
               {receiptLines(lastReceipt).map((line, index) => (
                 <div className="receipt-line" key={`${line.name}-${index}`}>
                   <span>{line.quantity} x {line.name}</span>

@@ -1,9 +1,9 @@
 import React, { useState, useContext } from 'react';
-import * as XLSX from 'xlsx';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import { StoreContext } from '../context/StoreContext';
 import { AuthContext } from '../context/AuthContext';
 import { formatCurrency, formatPercentage } from '../utils/formatters';
+import { downloadCsv } from '../utils/csv';
 
 export const Reports = () => {
   const { settings } = useContext(StoreContext);
@@ -16,7 +16,7 @@ export const Reports = () => {
       // For V1, we'll fetch the core API endpoints and transform them into flat Excel sheets
       const fetchOptions = { headers: { 'Authorization': `Bearer ${token}` } };
       let data = [];
-      let filename = `${reportType}_Report.xlsx`;
+      let filename = `${reportType}_Report.csv`;
 
       if (reportType === 'Sales') {
         const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/sales`, fetchOptions);
@@ -34,7 +34,12 @@ export const Reports = () => {
             'Date': new Date(s.date).toISOString().split('T')[0],
             'Customer': s.customerName || 'Retail',
             'Channel': s.channel,
+            'Order Reference': s.orderReference || '',
+            'Fulfillment Status': s.fulfillmentStatus || 'Delivered',
             'Warehouse': s.warehouseName || s.warehouse?.name || '',
+            'Seller / Reseller': s.sellerName || '',
+            'Seller Type': s.sellerType || '',
+            'Commission': formatCurrency(s.commissionAmount || 0, settings),
             'Total Revenue': formatCurrency(s.totalRevenue, settings),
             'Total COGS': formatCurrency(s.totalCogs, settings),
             'Gross Profit': formatCurrency(s.totalRevenue - s.totalCogs, settings),
@@ -49,7 +54,12 @@ export const Reports = () => {
           'Date': '',
           'Customer': '',
           'Channel': '',
+          'Order Reference': '',
+          'Fulfillment Status': '',
           'Warehouse': '',
+          'Seller / Reseller': '',
+          'Seller Type': '',
+          'Commission': '',
           'Total Revenue': formatCurrency(sumRev, settings),
           'Total COGS': formatCurrency(sumCogs, settings),
           'Gross Profit': formatCurrency(sumRev - sumCogs, settings),
@@ -130,58 +140,89 @@ export const Reports = () => {
         });
       }
 
+      if (reportType === 'Stock Transfers') {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/transfers`, fetchOptions);
+        if (res.status === 401) return logout();
+        const raw = await res.json();
+        data = raw.flatMap((transfer) => (
+          transfer.items?.map((item) => ({
+            'Transfer Number': transfer.transferNumber,
+            'Created Date': new Date(transfer.createdAt).toISOString().split('T')[0],
+            'Origin': transfer.sourceWarehouse?.name || '',
+            'Destination': transfer.destinationWarehouse?.name || '',
+            'Status': transfer.status,
+            'Requested By': transfer.requestedByName || '',
+            'Confirmed By': transfer.confirmedByName || '',
+            'Product SKU': item.product?.sku || '',
+            'Product Name': item.product?.name || '',
+            'Quantity': item.quantity,
+            'Unit Cost': formatCurrency(item.unitCost || 0, settings),
+            'Line Value': formatCurrency((item.unitCost || 0) * item.quantity, settings),
+            'Notes': transfer.notes || '',
+          })) || []
+        ));
+      }
+
+      if (reportType === 'HR Payments') {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/hr/payments`, fetchOptions);
+        if (res.status === 401) return logout();
+        const raw = await res.json();
+        data = raw.map((payment) => ({
+          'Description': payment.description,
+          'Type': payment.type,
+          'Worker': payment.employee?.fullName || '',
+          'Amount': formatCurrency(payment.amount, settings),
+          'Periodicity': payment.periodicity || 'One-time',
+          'Due Date': payment.dueDate ? new Date(payment.dueDate).toISOString().split('T')[0] : '',
+          'Next Due Date': payment.nextDueDate ? new Date(payment.nextDueDate).toISOString().split('T')[0] : '',
+          'Method': payment.method || '',
+          'Status': payment.status,
+          'Notes': payment.notes || '',
+        }));
+      }
+
+      if (reportType === 'Sellers & Resellers') {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/commercial-partners`, fetchOptions);
+        if (res.status === 401) return logout();
+        const raw = await res.json();
+        data = raw.map((partner) => ({
+          'Name': partner.name,
+          'Type': partner.type,
+          'Phone': partner.phone || '',
+          'Email': partner.email || '',
+          'Commission Rate %': partner.commissionRate || 0,
+          'Sales Count': partner._count?.sales || 0,
+          'Status': partner.status,
+          'Notes': partner.notes || '',
+        }));
+      }
+
+      if (reportType === 'Audit Logs') {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/audit-logs?take=500`, fetchOptions);
+        if (res.status === 401) return logout();
+        const raw = await res.json();
+        data = raw.map((log) => ({
+          'Date': new Date(log.createdAt).toLocaleString(),
+          'User': log.userName || log.userEmail || 'System',
+          'Role': log.userRole || '',
+          'Method': log.method,
+          'Path': log.path,
+          'Module': log.entityType || '',
+          'IP Address': log.ipAddress || '',
+          'Machine': log.machine || '',
+          'Status Code': log.statusCode || '',
+          'User Agent': log.userAgent || '',
+          'Metadata': log.metadata || '',
+        }));
+      }
+
       if (data.length === 0) {
         alert("No data available for this report.");
         setDownloading(false);
         return;
       }
 
-      // Generate the XLSX via SheetJS
-      const worksheet = XLSX.utils.json_to_sheet(data);
-
-      // Define visual column widths for polished output
-      if (reportType === 'Sales') {
-        worksheet['!cols'] = [
-          { wch: 10 }, // Sale ID
-          { wch: 15 }, // Date
-          { wch: 25 }, // Customer
-          { wch: 15 }, // Channel
-          { wch: 24 }, // Warehouse
-          { wch: 20 }, // Total Revenue
-          { wch: 20 }, // Total COGS
-          { wch: 20 }, // Gross Profit
-          { wch: 18 }  // Gross Margin %
-        ];
-      } else if (reportType === 'Inventory') {
-        worksheet['!cols'] = [
-          { wch: 20 }, // SKU
-          { wch: 35 }, // Product Name
-          { wch: 20 }, // Category
-          { wch: 15 }, // Type
-          { wch: 15 }, // Current Stock
-          { wch: 20 }, // Unit Cost
-          { wch: 25 }  // Total Inventory Value
-        ];
-      } else if (reportType === 'Warehouse Inventory') {
-        worksheet['!cols'] = [
-          { wch: 26 },
-          { wch: 16 },
-          { wch: 20 },
-          { wch: 35 },
-          { wch: 20 },
-          { wch: 15 },
-          { wch: 15 },
-          { wch: 12 },
-          { wch: 16 },
-          { wch: 20 },
-          { wch: 20 }
-        ];
-      }
-
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, reportType);
-      
-      XLSX.writeFile(workbook, filename);
+      downloadCsv(data, filename);
     } catch (e) {
       console.error(e);
       alert("Failed to export report.");
@@ -196,7 +237,7 @@ export const Reports = () => {
       <div className="reports-grid">
         <div className="card">
           <h3 style={{ marginBottom: '1.5rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FileSpreadsheet className="text-primary" size={24} /> Generate Excel (.xlsx) Reports
+            <FileSpreadsheet className="text-primary" size={24} /> Generate Excel-compatible CSV Reports
           </h3>
           <p style={{ color: 'var(--color-charcoal-light)', marginBottom: '2rem', fontSize: '0.875rem' }}>
             Download live data ledgers directly into Microsoft Excel formatting for external processing and tax preparation.
@@ -215,6 +256,26 @@ export const Reports = () => {
 
             <button className="btn" onClick={() => downloadExcel('Warehouse Inventory')} disabled={downloading} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem' }}>
               <span style={{ fontWeight: 600 }}>Warehouse Inventory & Location Map</span>
+              <Download size={18} />
+            </button>
+
+            <button className="btn" onClick={() => downloadExcel('Stock Transfers')} disabled={downloading} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem' }}>
+              <span style={{ fontWeight: 600 }}>Stock Transfers & In-Transit Report</span>
+              <Download size={18} />
+            </button>
+
+            <button className="btn" onClick={() => downloadExcel('HR Payments')} disabled={downloading} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem' }}>
+              <span style={{ fontWeight: 600 }}>HR Payments & Periodicity Report</span>
+              <Download size={18} />
+            </button>
+
+            <button className="btn" onClick={() => downloadExcel('Sellers & Resellers')} disabled={downloading} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem' }}>
+              <span style={{ fontWeight: 600 }}>Sellers, Resellers & Commissions Report</span>
+              <Download size={18} />
+            </button>
+
+            <button className="btn" onClick={() => downloadExcel('Audit Logs')} disabled={downloading} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem' }}>
+              <span style={{ fontWeight: 600 }}>Audit Logs Report</span>
               <Download size={18} />
             </button>
           </div>

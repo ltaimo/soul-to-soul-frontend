@@ -35,6 +35,14 @@ export const Settings = () => {
   const [formData, setFormData] = useState({
     companyName: 'Soul2Soul',
     companyLogo: '',
+    companyPhone: '',
+    companyWhatsApp: '',
+    companyEmail: '',
+    companyAddress: '',
+    companyWebsite: '',
+    instagramUrl: '',
+    facebookUrl: '',
+    tiktokUrl: '',
     defaultCurrency: 'MZN',
     currencySymbol: 'MT',
     decimalFormatting: 2,
@@ -54,6 +62,14 @@ export const Settings = () => {
       setFormData({
         companyName: settings.companyName || 'Soul2Soul',
         companyLogo: settings.companyLogo || '',
+        companyPhone: settings.companyPhone || '',
+        companyWhatsApp: settings.companyWhatsApp || '',
+        companyEmail: settings.companyEmail || '',
+        companyAddress: settings.companyAddress || '',
+        companyWebsite: settings.companyWebsite || '',
+        instagramUrl: settings.instagramUrl || '',
+        facebookUrl: settings.facebookUrl || '',
+        tiktokUrl: settings.tiktokUrl || '',
         defaultCurrency: settings.defaultCurrency || 'MZN',
         currencySymbol: settings.currencySymbol || 'MT',
         decimalFormatting: settings.decimalFormatting ?? 2,
@@ -75,6 +91,14 @@ export const Settings = () => {
     const result = await updateSettings({
       companyName: formData.companyName,
       companyLogo: formData.companyLogo,
+      companyPhone: formData.companyPhone,
+      companyWhatsApp: formData.companyWhatsApp,
+      companyEmail: formData.companyEmail,
+      companyAddress: formData.companyAddress,
+      companyWebsite: formData.companyWebsite,
+      instagramUrl: formData.instagramUrl,
+      facebookUrl: formData.facebookUrl,
+      tiktokUrl: formData.tiktokUrl,
       defaultCurrency: formData.defaultCurrency,
       currencySymbol: formData.currencySymbol,
       decimalFormatting: Number(formData.decimalFormatting),
@@ -119,6 +143,18 @@ export const Settings = () => {
         <SettingsCard icon={<Building2 size={20} />} title={translate('companyProfile')} hint={translate('companyProfileHint')}>
           <TextInput label={translate('companyName')} value={formData.companyName} onChange={(value) => setField('companyName', value)} />
           <TextInput label={translate('logoUrl')} value={formData.companyLogo} onChange={(value) => setField('companyLogo', value)} placeholder="https://..." />
+          <div className="form-grid-2">
+            <TextInput label="Phone" value={formData.companyPhone} onChange={(value) => setField('companyPhone', value)} placeholder="+258 ..." />
+            <TextInput label="WhatsApp" value={formData.companyWhatsApp} onChange={(value) => setField('companyWhatsApp', value)} placeholder="+258 ..." />
+          </div>
+          <TextInput label="Email" value={formData.companyEmail} onChange={(value) => setField('companyEmail', value)} placeholder="hello@soul2soulmz.com" />
+          <TextInput label="Address" value={formData.companyAddress} onChange={(value) => setField('companyAddress', value)} placeholder="Baia Mall, Maputo" />
+          <TextInput label="Website" value={formData.companyWebsite} onChange={(value) => setField('companyWebsite', value)} placeholder="https://soul2soulmz.com" />
+          <div className="form-grid-2">
+            <TextInput label="Instagram" value={formData.instagramUrl} onChange={(value) => setField('instagramUrl', value)} placeholder="@soul2soul or URL" />
+            <TextInput label="Facebook" value={formData.facebookUrl} onChange={(value) => setField('facebookUrl', value)} placeholder="Soul2Soul or URL" />
+          </div>
+          <TextInput label="TikTok" value={formData.tiktokUrl} onChange={(value) => setField('tiktokUrl', value)} placeholder="@soul2soul" />
         </SettingsCard>
 
         <SettingsCard icon={<Coins size={20} />} title={translate('financialPreferences')} hint={translate('financialPreferencesHint')}>
