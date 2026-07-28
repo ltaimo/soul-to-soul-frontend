@@ -88,6 +88,8 @@ export const HumanResources = () => {
   const paymentMethods = settings?.paymentMethodsList?.length ? settings.paymentMethodsList : ['Cash', 'M-Pesa', 'E-Mola', 'Card', 'Bank Transfer'];
   const attendanceStatuses = settings?.attendanceStatusesList?.length ? settings.attendanceStatusesList : ['Present', 'Absent', 'Late', 'Half Day', 'Leave'];
   const payFrequencies = settings?.payFrequenciesList?.length ? settings.payFrequenciesList : ['Monthly', 'Weekly', 'Daily', 'Hourly'];
+  const hrRoles = settings?.hrRolesList?.length ? settings.hrRolesList : ['Manager', 'Cashier', 'Salesperson', 'Stock Manager', 'Production Assistant', 'Administrator'];
+  const hrDepartments = settings?.hrDepartmentsList?.length ? settings.hrDepartmentsList : ['Sales', 'Store', 'Warehouse', 'Production', 'Administration', 'Finance'];
 
   const [activeTab, setActiveTab] = useState('employees');
   const [searchTerm, setSearchTerm] = useState('');
@@ -534,11 +536,17 @@ export const HumanResources = () => {
               <div className="receive-grid">
                 <div className="form-group">
                   <label className="form-label">Role</label>
-                  <input className="form-input" value={employeeForm.role} onChange={(event) => setEmployeeForm({ ...employeeForm, role: event.target.value })} />
+                  <select className="form-input" value={employeeForm.role} onChange={(event) => setEmployeeForm({ ...employeeForm, role: event.target.value })}>
+                    <option value="">Select role</option>
+                    {hrRoles.map((role) => <option key={role} value={role}>{role}</option>)}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Department</label>
-                  <input className="form-input" value={employeeForm.department} onChange={(event) => setEmployeeForm({ ...employeeForm, department: event.target.value })} />
+                  <select className="form-input" value={employeeForm.department} onChange={(event) => setEmployeeForm({ ...employeeForm, department: event.target.value })}>
+                    <option value="">Select department</option>
+                    {hrDepartments.map((department) => <option key={department} value={department}>{department}</option>)}
+                  </select>
                 </div>
               </div>
               <div className="receive-grid">

@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { StoreContext } from '../context/StoreContext';
 import { LanguageContext } from '../context/LanguageContext';
-import { Save, Building2, Coins, HeartPulse, Package, ReceiptText, SlidersHorizontal, Plus, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Save, Building2, Coins, HeartPulse, Package, ReceiptText, SlidersHorizontal, Plus, Trash2, ToggleLeft, ToggleRight, UsersRound } from 'lucide-react';
 
 const csvToOptions = (value) => String(value || '')
   .split(',')
@@ -54,8 +54,18 @@ export const Settings = () => {
     productUnitsOptions: [],
     attendanceStatusesOptions: [],
     payFrequenciesOptions: [],
+    hrRolesOptions: [],
+    hrDepartmentsOptions: [],
   });
+  const [activeSection, setActiveSection] = useState('company');
   const [statusMsg, setStatusMsg] = useState('');
+
+  const sections = [
+    { id: 'company', label: translate('settingsCompanySection'), icon: <Building2 size={18} /> },
+    { id: 'hr', label: translate('settingsHrSection'), icon: <HeartPulse size={18} /> },
+    { id: 'finance', label: translate('settingsFinanceSection'), icon: <Coins size={18} /> },
+    { id: 'inventory', label: translate('settingsInventorySection'), icon: <Package size={18} /> },
+  ];
 
   useEffect(() => {
     if (settings) {
@@ -81,6 +91,8 @@ export const Settings = () => {
         productUnitsOptions: toOptions(settings.productUnitsOptions, settings.productUnitsList || settings.productUnits),
         attendanceStatusesOptions: toOptions(settings.attendanceStatusesOptions, settings.attendanceStatusesList || settings.attendanceStatuses),
         payFrequenciesOptions: toOptions(settings.payFrequenciesOptions, settings.payFrequenciesList || settings.payFrequencies),
+        hrRolesOptions: toOptions(settings.hrRolesOptions, settings.hrRolesList || settings.hrRoles),
+        hrDepartmentsOptions: toOptions(settings.hrDepartmentsOptions, settings.hrDepartmentsList || settings.hrDepartments),
       });
     }
   }, [settings]);
@@ -110,6 +122,8 @@ export const Settings = () => {
       productUnitsOptions: cleanOptions(formData.productUnitsOptions),
       attendanceStatusesOptions: cleanOptions(formData.attendanceStatusesOptions),
       payFrequenciesOptions: cleanOptions(formData.payFrequenciesOptions),
+      hrRolesOptions: cleanOptions(formData.hrRolesOptions),
+      hrDepartmentsOptions: cleanOptions(formData.hrDepartmentsOptions),
     });
     setStatusMsg(result.success ? translate('settingsSaved') : `Error: ${result.error}`);
   };
@@ -139,64 +153,97 @@ export const Settings = () => {
         </div>
       )}
 
-      <div className="settings-grid">
-        <SettingsCard icon={<Building2 size={20} />} title={translate('companyProfile')} hint={translate('companyProfileHint')}>
-          <TextInput label={translate('companyName')} value={formData.companyName} onChange={(value) => setField('companyName', value)} />
-          <TextInput label={translate('logoUrl')} value={formData.companyLogo} onChange={(value) => setField('companyLogo', value)} placeholder="https://..." />
-          <div className="form-grid-2">
-            <TextInput label="Phone" value={formData.companyPhone} onChange={(value) => setField('companyPhone', value)} placeholder="+258 ..." />
-            <TextInput label="WhatsApp" value={formData.companyWhatsApp} onChange={(value) => setField('companyWhatsApp', value)} placeholder="+258 ..." />
-          </div>
-          <TextInput label="Email" value={formData.companyEmail} onChange={(value) => setField('companyEmail', value)} placeholder="hello@soul2soulmz.com" />
-          <TextInput label="Address" value={formData.companyAddress} onChange={(value) => setField('companyAddress', value)} placeholder="Baia Mall, Maputo" />
-          <TextInput label="Website" value={formData.companyWebsite} onChange={(value) => setField('companyWebsite', value)} placeholder="https://soul2soulmz.com" />
-          <div className="form-grid-2">
-            <TextInput label="Instagram" value={formData.instagramUrl} onChange={(value) => setField('instagramUrl', value)} placeholder="@soul2soul or URL" />
-            <TextInput label="Facebook" value={formData.facebookUrl} onChange={(value) => setField('facebookUrl', value)} placeholder="Soul2Soul or URL" />
-          </div>
-          <TextInput label="TikTok" value={formData.tiktokUrl} onChange={(value) => setField('tiktokUrl', value)} placeholder="@soul2soul" />
-        </SettingsCard>
+      <div className="settings-shell">
+        <aside className="settings-nav card">
+          {sections.map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              className={activeSection === section.id ? 'active' : ''}
+              onClick={() => setActiveSection(section.id)}
+            >
+              {section.icon}
+              {section.label}
+            </button>
+          ))}
+        </aside>
 
-        <SettingsCard icon={<Coins size={20} />} title={translate('financialPreferences')} hint={translate('financialPreferencesHint')}>
-          <div className="form-grid-2">
-            <TextInput label={translate('currencyCode')} value={formData.defaultCurrency} onChange={(value) => setField('defaultCurrency', value)} placeholder="MZN" />
-            <TextInput label={translate('currencySymbol')} value={formData.currencySymbol} onChange={(value) => setField('currencySymbol', value)} placeholder="MT" />
-          </div>
-          <div className="form-group">
-            <label className="form-label">{translate('decimalPlaces')}</label>
-            <select className="form-input" value={formData.decimalFormatting} onChange={(event) => setField('decimalFormatting', Number(event.target.value))}>
-              <option value={0}>0 (MT 1500)</option>
-              <option value={1}>1 (MT 1500.5)</option>
-              <option value={2}>2 (MT 1500.50)</option>
-            </select>
-          </div>
-        </SettingsCard>
+        <div className="settings-panel">
+          {activeSection === 'company' && (
+            <div className="settings-grid">
+              <SettingsCard icon={<Building2 size={20} />} title={translate('companyProfile')} hint={translate('companyProfileHint')}>
+                <TextInput label={translate('companyName')} value={formData.companyName} onChange={(value) => setField('companyName', value)} />
+                <TextInput label={translate('logoUrl')} value={formData.companyLogo} onChange={(value) => setField('companyLogo', value)} placeholder="https://..." />
+                <div className="form-grid-2">
+                  <TextInput label="Phone" value={formData.companyPhone} onChange={(value) => setField('companyPhone', value)} placeholder="+258 ..." />
+                  <TextInput label="WhatsApp" value={formData.companyWhatsApp} onChange={(value) => setField('companyWhatsApp', value)} placeholder="+258 ..." />
+                </div>
+                <TextInput label="Email" value={formData.companyEmail} onChange={(value) => setField('companyEmail', value)} placeholder="hello@soul2soulmz.com" />
+                <TextInput label="Address" value={formData.companyAddress} onChange={(value) => setField('companyAddress', value)} placeholder="Baia Mall, Maputo" />
+                <TextInput label="Website" value={formData.companyWebsite} onChange={(value) => setField('companyWebsite', value)} placeholder="https://soul2soulmz.com" />
+                <div className="form-grid-2">
+                  <TextInput label="Instagram" value={formData.instagramUrl} onChange={(value) => setField('instagramUrl', value)} placeholder="@soul2soul or URL" />
+                  <TextInput label="Facebook" value={formData.facebookUrl} onChange={(value) => setField('facebookUrl', value)} placeholder="Soul2Soul or URL" />
+                </div>
+                <TextInput label="TikTok" value={formData.tiktokUrl} onChange={(value) => setField('tiktokUrl', value)} placeholder="@soul2soul" />
+              </SettingsCard>
 
-        <SettingsCard icon={<ReceiptText size={20} />} title={translate('payments')} hint={translate('paymentsHint')}>
-          <OptionManager label={translate('salesPaymentMethods')} value={formData.paymentMethodsOptions} onChange={(updater) => setOptionList('paymentMethodsOptions', updater)} translate={translate} />
-          <OptionManager label={translate('hrPaymentTypes')} value={formData.hrPaymentTypesOptions} onChange={(updater) => setOptionList('hrPaymentTypesOptions', updater)} translate={translate} />
-        </SettingsCard>
+              <SettingsCard icon={<SlidersHorizontal size={20} />} title={translate('editListsHelpTitle')} hint={translate('editListsHelpHint')}>
+                <p className="settings-help">{translate('editListsHelp1')}</p>
+                <p className="settings-help">{translate('editListsHelp2')}</p>
+              </SettingsCard>
+            </div>
+          )}
 
-        <SettingsCard icon={<Package size={20} />} title={translate('inventoryProducts')} hint={translate('inventoryProductsHint')}>
-          <OptionManager label={translate('warehouseTypes')} value={formData.warehouseTypesOptions} onChange={(updater) => setOptionList('warehouseTypesOptions', updater)} translate={translate} />
-          <OptionManager label={translate('productCategories')} value={formData.productCategoriesOptions} onChange={(updater) => setOptionList('productCategoriesOptions', updater)} translate={translate} />
-          <OptionManager label={translate('productTypes')} value={formData.productTypesOptions} onChange={(updater) => setOptionList('productTypesOptions', updater)} translate={translate} />
-          <OptionManager label={translate('productUnits')} value={formData.productUnitsOptions} onChange={(updater) => setOptionList('productUnitsOptions', updater)} translate={translate} />
-        </SettingsCard>
+          {activeSection === 'hr' && (
+            <div className="settings-grid">
+              <SettingsCard icon={<UsersRound size={20} />} title={translate('hrStructure')} hint={translate('hrStructureHint')}>
+                <OptionManager label={translate('hrRoles')} value={formData.hrRolesOptions} onChange={(updater) => setOptionList('hrRolesOptions', updater)} translate={translate} />
+                <OptionManager label={translate('hrDepartments')} value={formData.hrDepartmentsOptions} onChange={(updater) => setOptionList('hrDepartmentsOptions', updater)} translate={translate} />
+              </SettingsCard>
 
-        <SettingsCard icon={<HeartPulse size={20} />} title={translate('hrDefaults')} hint={translate('hrDefaultsHint')}>
-          <OptionManager label={translate('attendanceStatuses')} value={formData.attendanceStatusesOptions} onChange={(updater) => setOptionList('attendanceStatusesOptions', updater)} translate={translate} />
-          <OptionManager label={translate('payFrequencies')} value={formData.payFrequenciesOptions} onChange={(updater) => setOptionList('payFrequenciesOptions', updater)} translate={translate} />
-        </SettingsCard>
+              <SettingsCard icon={<HeartPulse size={20} />} title={translate('hrDefaults')} hint={translate('hrDefaultsHint')}>
+                <OptionManager label={translate('attendanceStatuses')} value={formData.attendanceStatusesOptions} onChange={(updater) => setOptionList('attendanceStatusesOptions', updater)} translate={translate} />
+                <OptionManager label={translate('payFrequencies')} value={formData.payFrequenciesOptions} onChange={(updater) => setOptionList('payFrequenciesOptions', updater)} translate={translate} />
+                <OptionManager label={translate('hrPaymentTypes')} value={formData.hrPaymentTypesOptions} onChange={(updater) => setOptionList('hrPaymentTypesOptions', updater)} translate={translate} />
+              </SettingsCard>
+            </div>
+          )}
 
-        <SettingsCard icon={<SlidersHorizontal size={20} />} title={translate('editListsHelpTitle')} hint={translate('editListsHelpHint')}>
-          <p className="settings-help">
-            {translate('editListsHelp1')}
-          </p>
-          <p className="settings-help">
-            {translate('editListsHelp2')}
-          </p>
-        </SettingsCard>
+          {activeSection === 'finance' && (
+            <div className="settings-grid">
+              <SettingsCard icon={<Coins size={20} />} title={translate('financialPreferences')} hint={translate('financialPreferencesHint')}>
+                <div className="form-grid-2">
+                  <TextInput label={translate('currencyCode')} value={formData.defaultCurrency} onChange={(value) => setField('defaultCurrency', value)} placeholder="MZN" />
+                  <TextInput label={translate('currencySymbol')} value={formData.currencySymbol} onChange={(value) => setField('currencySymbol', value)} placeholder="MT" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">{translate('decimalPlaces')}</label>
+                  <select className="form-input" value={formData.decimalFormatting} onChange={(event) => setField('decimalFormatting', Number(event.target.value))}>
+                    <option value={0}>0 (MT 1500)</option>
+                    <option value={1}>1 (MT 1500.5)</option>
+                    <option value={2}>2 (MT 1500.50)</option>
+                  </select>
+                </div>
+              </SettingsCard>
+
+              <SettingsCard icon={<ReceiptText size={20} />} title={translate('payments')} hint={translate('paymentsHint')}>
+                <OptionManager label={translate('salesPaymentMethods')} value={formData.paymentMethodsOptions} onChange={(updater) => setOptionList('paymentMethodsOptions', updater)} translate={translate} />
+              </SettingsCard>
+            </div>
+          )}
+
+          {activeSection === 'inventory' && (
+            <div className="settings-grid">
+              <SettingsCard icon={<Package size={20} />} title={translate('inventoryProducts')} hint={translate('inventoryProductsHint')}>
+                <OptionManager label={translate('warehouseTypes')} value={formData.warehouseTypesOptions} onChange={(updater) => setOptionList('warehouseTypesOptions', updater)} translate={translate} />
+                <OptionManager label={translate('productCategories')} value={formData.productCategoriesOptions} onChange={(updater) => setOptionList('productCategoriesOptions', updater)} translate={translate} />
+                <OptionManager label={translate('productTypes')} value={formData.productTypesOptions} onChange={(updater) => setOptionList('productTypesOptions', updater)} translate={translate} />
+                <OptionManager label={translate('productUnits')} value={formData.productUnitsOptions} onChange={(updater) => setOptionList('productUnitsOptions', updater)} translate={translate} />
+              </SettingsCard>
+            </div>
+          )}
+        </div>
       </div>
     </form>
   );

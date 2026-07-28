@@ -37,6 +37,8 @@ export const StoreProvider = ({ children }) => {
     productUnitsOptions: ['pcs', 'kg', 'g', 'l', 'ml', 'box'].map((label) => ({ label, active: true })),
     attendanceStatusesOptions: ['Present', 'Absent', 'Late', 'Half Day', 'Leave'].map((label) => ({ label, active: true })),
     payFrequenciesOptions: ['Monthly', 'Weekly', 'Daily', 'Hourly'].map((label) => ({ label, active: true })),
+    hrRolesOptions: ['Manager', 'Cashier', 'Salesperson', 'Stock Manager', 'Production Assistant', 'Administrator'].map((label) => ({ label, active: true })),
+    hrDepartmentsOptions: ['Sales', 'Store', 'Warehouse', 'Production', 'Administration', 'Finance'].map((label) => ({ label, active: true })),
     hrPaymentTypesList: ['Salary', 'Rent', 'Advance', 'Bonus', 'Transport', 'Utilities', 'Commission', 'Other'],
     paymentMethodsList: ['Cash', 'M-Pesa', 'E-Mola', 'Card', 'Bank Transfer'],
     warehouseTypesList: ['Warehouse', 'Shop', 'Storage', 'Transit'],
@@ -44,7 +46,9 @@ export const StoreProvider = ({ children }) => {
     productTypesList: ['Finished Good', 'Raw Material', 'Packaging'],
     productUnitsList: ['pcs', 'kg', 'g', 'l', 'ml', 'box'],
     attendanceStatusesList: ['Present', 'Absent', 'Late', 'Half Day', 'Leave'],
-    payFrequenciesList: ['Monthly', 'Weekly', 'Daily', 'Hourly']
+    payFrequenciesList: ['Monthly', 'Weekly', 'Daily', 'Hourly'],
+    hrRolesList: ['Manager', 'Cashier', 'Salesperson', 'Stock Manager', 'Production Assistant', 'Administrator'],
+    hrDepartmentsList: ['Sales', 'Store', 'Warehouse', 'Production', 'Administration', 'Finance']
   });
   const [loading, setLoading] = useState(true);
   const { token, logout, user } = useContext(AuthContext);
