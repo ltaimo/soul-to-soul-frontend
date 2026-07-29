@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, 
   LineChart, Line, PieChart, Pie, Cell 
 } from 'recharts';
-import { TrendingUp, AlertCircle, Target, DollarSign, Package, Shield, Warehouse, ArrowRightLeft, Users, HeartHandshake, ShieldCheck } from 'lucide-react';
+import { TrendingUp, AlertCircle, Target, DollarSign, Package, Shield, Warehouse, ArrowRightLeft, Users, HeartHandshake, ShieldCheck, RefreshCw } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '../utils/formatters';
 import { StoreContext } from '../context/StoreContext';
 import { AuthContext } from '../context/AuthContext';
@@ -17,27 +17,42 @@ export const Dashboard = ({ setActivePage }) => {
   const { translate } = useContext(LanguageContext);
   const [kpis, setKpis] = useState(null);
   const [alerts, setAlerts] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const canSeeFinancials = user?.role === 'admin' || user?.role === 'manager';
   const canSeeAlerts = ['admin', 'manager', 'stock_manager', 'production_manager', 'viewer'].includes(user?.role);
 
-  useEffect(() => {
+  const loadAnalytics = async () => {
+    setIsRefreshing(true);
     const fetchOptions = {
-      headers: { 'Authorization': `Bearer ${token}` }
+      cache: 'no-store',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Cache-Control': 'no-cache',
+      }
     };
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+    const stamp = Date.now();
 
     const requests = [
       canSeeFinancials
-        ? fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/analytics/kpis`, fetchOptions).then(r => { if(r.status===401) logout(); return r.json()})
+        ? fetch(`${apiBase}/api/analytics/kpis?_=${stamp}`, fetchOptions).then(r => { if(r.status===401) logout(); return r.json()})
         : Promise.resolve(null),
       canSeeAlerts
-        ? fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/analytics/alerts`, fetchOptions).then(r => { if(r.status===401) logout(); return r.json()})
+        ? fetch(`${apiBase}/api/analytics/alerts?_=${stamp}`, fetchOptions).then(r => { if(r.status===401) logout(); return r.json()})
         : Promise.resolve(null)
     ];
 
-    Promise.all(requests).then(([kpiData, alertsData]) => {
+    return Promise.all(requests).then(([kpiData, alertsData]) => {
       setKpis(kpiData);
       setAlerts(alertsData);
-    }).catch(err => console.error("Could not fetch analytics", err));
+      setLastUpdated(new Date());
+    }).catch(err => console.error("Could not fetch analytics", err))
+      .finally(() => setIsRefreshing(false));
+  };
+
+  useEffect(() => {
+    loadAnalytics();
   }, [token, logout, canSeeFinancials, canSeeAlerts]);
 
   if ((canSeeFinancials && !kpis) || (canSeeAlerts && !alerts)) return <div style={{ padding: '2rem' }}>{translate('loadingBi')}</div>;
@@ -50,7 +65,18 @@ export const Dashboard = ({ setActivePage }) => {
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title" style={{ marginBottom: 0 }}>{translate('executiveDashboard')}</h1>
+        <div>
+          <h1 className="page-title" style={{ marginBottom: 0 }}>{translate('executiveDashboard')}</h1>
+          {lastUpdated && (
+            <p className="page-subtitle" style={{ marginTop: '0.25rem' }}>
+              {translate('dashboardLastUpdated', { time: lastUpdated.toLocaleTimeString() })}
+            </p>
+          )}
+        </div>
+        <button className="btn btn-secondary" type="button" onClick={loadAnalytics} disabled={isRefreshing}>
+          <RefreshCw size={16} className={isRefreshing ? 'spin-icon' : ''} />
+          {translate('refreshDashboard')}
+        </button>
       </div>
 
       {canSeeFinancials && (

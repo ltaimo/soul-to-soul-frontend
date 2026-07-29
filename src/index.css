@@ -1061,6 +1061,16 @@ tr:hover {
   accent-color: var(--color-primary);
 }
 
+.spin-icon {
+  animation: soul-spin 0.8s linear infinite;
+}
+
+@keyframes soul-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .toast-popup {
   position: fixed;
   top: 1.25rem;
