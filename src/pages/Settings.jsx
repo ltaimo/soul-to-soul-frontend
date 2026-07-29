@@ -1,7 +1,8 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { StoreContext } from '../context/StoreContext';
 import { LanguageContext } from '../context/LanguageContext';
-import { Save, Building2, Coins, HeartPulse, Package, ReceiptText, SlidersHorizontal, Plus, Trash2, ToggleLeft, ToggleRight, UsersRound } from 'lucide-react';
+import { AuthContext } from '../context/AuthContext';
+import { Save, Building2, Coins, HeartPulse, Package, ReceiptText, SlidersHorizontal, Plus, Trash2, ToggleLeft, ToggleRight, UsersRound, ShieldAlert, KeyRound, RotateCcw } from 'lucide-react';
 
 const csvToOptions = (value) => String(value || '')
   .split(',')
@@ -30,7 +31,8 @@ const toOptions = (value, fallback = []) => {
 const cleanOptions = (value) => toOptions(value).filter((item) => item.label);
 
 export const Settings = () => {
-  const { settings, updateSettings } = useContext(StoreContext);
+  const { settings, updateSettings, fetchResetPreview, generateSecurityCode, executeCriticalReset } = useContext(StoreContext);
+  const { user } = useContext(AuthContext);
   const { translate } = useContext(LanguageContext);
   const [formData, setFormData] = useState({
     companyName: 'Soul2Soul',
@@ -59,12 +61,28 @@ export const Settings = () => {
   });
   const [activeSection, setActiveSection] = useState('company');
   const [statusMsg, setStatusMsg] = useState('');
+  const [resetPreview, setResetPreview] = useState(null);
+  const [criticalReason, setCriticalReason] = useState('');
+  const [securityCode, setSecurityCode] = useState('');
+  const [issuedCode, setIssuedCode] = useState(null);
+  const [confirmText, setConfirmText] = useState('');
+  const [resetOptions, setResetOptions] = useState({
+    clearSales: true,
+    clearPurchases: false,
+    clearStockHistory: false,
+    clearTransfers: false,
+    clearHrOperations: false,
+    clearCustomers: false,
+    clearAuditLogs: false,
+    zeroStock: false,
+  });
 
   const sections = [
     { id: 'company', label: translate('settingsCompanySection'), icon: <Building2 size={18} /> },
     { id: 'hr', label: translate('settingsHrSection'), icon: <HeartPulse size={18} /> },
     { id: 'finance', label: translate('settingsFinanceSection'), icon: <Coins size={18} /> },
     { id: 'inventory', label: translate('settingsInventorySection'), icon: <Package size={18} /> },
+    ...(user?.role === 'admin' ? [{ id: 'critical', label: translate('criticalActions'), icon: <ShieldAlert size={18} /> }] : []),
   ];
 
   useEffect(() => {
@@ -96,6 +114,14 @@ export const Settings = () => {
       });
     }
   }, [settings]);
+
+  useEffect(() => {
+    if (activeSection !== 'critical' || user?.role !== 'admin') return;
+    fetchResetPreview().then((result) => {
+      if (result.success) setResetPreview(result.preview);
+      else setStatusMsg(`Error: ${result.error}`);
+    });
+  }, [activeSection, user?.role]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -133,6 +159,38 @@ export const Settings = () => {
     ...current,
     [key]: updater(current[key] || []),
   }));
+
+  const handleGenerateCode = async () => {
+    setStatusMsg('');
+    const result = await generateSecurityCode({ reason: criticalReason, scope: 'RESET_OPERATIONS' });
+    if (!result.success) {
+      setStatusMsg(`Error: ${result.error}`);
+      return;
+    }
+    setIssuedCode(result);
+    setSecurityCode(result.code);
+    setStatusMsg(translate('securityCodeGenerated'));
+  };
+
+  const handleCriticalReset = async () => {
+    setStatusMsg('');
+    const result = await executeCriticalReset({
+      code: securityCode,
+      reason: criticalReason,
+      scope: 'RESET_OPERATIONS',
+      confirmText,
+      options: resetOptions,
+    });
+    if (!result.success) {
+      setStatusMsg(`Error: ${result.error}`);
+      return;
+    }
+    setResetPreview(result.after);
+    setIssuedCode(null);
+    setSecurityCode('');
+    setConfirmText('');
+    setStatusMsg(translate('criticalResetDone'));
+  };
 
   return (
     <form onSubmit={handleSubmit}>
@@ -240,6 +298,78 @@ export const Settings = () => {
                 <OptionManager label={translate('productCategories')} value={formData.productCategoriesOptions} onChange={(updater) => setOptionList('productCategoriesOptions', updater)} translate={translate} />
                 <OptionManager label={translate('productTypes')} value={formData.productTypesOptions} onChange={(updater) => setOptionList('productTypesOptions', updater)} translate={translate} />
                 <OptionManager label={translate('productUnits')} value={formData.productUnitsOptions} onChange={(updater) => setOptionList('productUnitsOptions', updater)} translate={translate} />
+              </SettingsCard>
+            </div>
+          )}
+
+          {activeSection === 'critical' && user?.role === 'admin' && (
+            <div className="settings-grid">
+              <SettingsCard icon={<ShieldAlert size={20} />} title={translate('criticalActions')} hint={translate('criticalActionsHint')}>
+                <div className="inline-alert inline-alert-danger">
+                  {translate('criticalActionsWarning')}
+                </div>
+                <div className="reset-preview-grid">
+                  {[
+                    ['sales', resetPreview?.sales],
+                    ['purchases', resetPreview?.purchases],
+                    ['stockMovements', resetPreview?.stockMovements],
+                    ['customers', resetPreview?.customers],
+                    ['hrPayments', resetPreview?.hrPayments],
+                    ['auditLogs', resetPreview?.auditLogs],
+                    ['productsWithStock', resetPreview?.productsWithStock],
+                    ['warehouseRowsWithStock', resetPreview?.warehouseRowsWithStock],
+                  ].map(([label, value]) => (
+                    <div className="reset-preview-pill" key={label}>
+                      <span>{translate(label) || label}</span>
+                      <strong>{value ?? '-'}</strong>
+                    </div>
+                  ))}
+                </div>
+              </SettingsCard>
+
+              <SettingsCard icon={<KeyRound size={20} />} title={translate('securityCode')} hint={translate('securityCodeHint')}>
+                <TextInput label={translate('reason')} value={criticalReason} onChange={setCriticalReason} placeholder={translate('reasonPlaceholder')} />
+                <button className="btn btn-secondary" type="button" onClick={handleGenerateCode}>
+                  <KeyRound size={16} />
+                  {translate('generateCode')}
+                </button>
+                {issuedCode && (
+                  <div className="security-code-box">
+                    <span>{translate('oneTimeCode')}</span>
+                    <strong>{issuedCode.code}</strong>
+                    <small>{translate('expiresAt')}: {new Date(issuedCode.expiresAt).toLocaleString()}</small>
+                  </div>
+                )}
+              </SettingsCard>
+
+              <SettingsCard icon={<RotateCcw size={20} />} title={translate('resetOptions')} hint={translate('resetOptionsHint')}>
+                <div className="critical-option-list">
+                  {[
+                    ['clearSales', translate('clearSales')],
+                    ['clearPurchases', translate('clearPurchases')],
+                    ['clearTransfers', translate('clearTransfers')],
+                    ['clearStockHistory', translate('clearStockHistory')],
+                    ['clearHrOperations', translate('clearHrOperations')],
+                    ['clearCustomers', translate('clearCustomers')],
+                    ['zeroStock', translate('zeroStock')],
+                    ['clearAuditLogs', translate('clearAuditLogs')],
+                  ].map(([key, label]) => (
+                    <label className="critical-check" key={key}>
+                      <input
+                        type="checkbox"
+                        checked={!!resetOptions[key]}
+                        onChange={(event) => setResetOptions((current) => ({ ...current, [key]: event.target.checked }))}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+                <TextInput label={translate('securityCode')} value={securityCode} onChange={setSecurityCode} placeholder="000000" />
+                <TextInput label={translate('confirmationText')} value={confirmText} onChange={setConfirmText} placeholder="RESET SOUL2SOUL" />
+                <button className="btn btn-danger" type="button" onClick={handleCriticalReset}>
+                  <ShieldAlert size={16} />
+                  {translate('executeReset')}
+                </button>
               </SettingsCard>
             </div>
           )}

@@ -954,6 +954,113 @@ tr:hover {
   border: 1px solid rgba(217, 83, 79, 0.2);
 }
 
+.btn-danger {
+  background: #991b1b;
+  color: white;
+  box-shadow: 0 10px 20px rgba(153, 27, 27, 0.18);
+}
+
+.btn-danger:hover {
+  background: #7f1d1d;
+}
+
+.help-hero {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.help-hero svg {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.help-hero h2 {
+  color: var(--color-primary);
+  margin-bottom: 0.35rem;
+}
+
+.help-hero p {
+  color: var(--color-charcoal-light);
+  line-height: 1.6;
+}
+
+.help-grid {
+  align-items: stretch;
+}
+
+.reset-preview-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin-top: 1rem;
+}
+
+.reset-preview-pill {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
+  background: var(--color-cream);
+}
+
+.reset-preview-pill span {
+  display: block;
+  color: var(--color-charcoal-light);
+  font-size: 0.78rem;
+  margin-bottom: 0.25rem;
+}
+
+.reset-preview-pill strong {
+  color: var(--color-primary);
+  font-size: 1.35rem;
+}
+
+.security-code-box {
+  border: 1px dashed rgba(107, 142, 126, 0.45);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-top: 1rem;
+  background: rgba(107, 142, 126, 0.08);
+}
+
+.security-code-box span,
+.security-code-box small {
+  display: block;
+  color: var(--color-charcoal-light);
+}
+
+.security-code-box strong {
+  display: block;
+  color: var(--color-primary);
+  font-size: 2rem;
+  letter-spacing: 0.28rem;
+  margin: 0.35rem 0;
+}
+
+.critical-option-list {
+  display: grid;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.critical-check {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  color: var(--color-charcoal);
+  background: var(--color-cream);
+}
+
+.critical-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+}
+
 .toast-popup {
   position: fixed;
   top: 1.25rem;

@@ -528,6 +528,48 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
+  const fetchResetPreview = async () => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/admin-tools/reset-preview`);
+      const result = await response.json();
+      if (!response.ok) throw result;
+      return { success: true, preview: result };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to load reset preview' };
+    }
+  };
+
+  const generateSecurityCode = async (data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/admin-tools/security-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      return { success: true, ...result };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to generate security code' };
+    }
+  };
+
+  const executeCriticalReset = async (data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/admin-tools/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true, ...result };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to execute reset' };
+    }
+  };
+
   const fetchAuditLogs = async (filters = {}) => {
     try {
       const params = new URLSearchParams();
@@ -740,6 +782,9 @@ export const StoreProvider = ({ children }) => {
       createWorkGoal,
       updateWorkGoal,
       updateSettings,
+      fetchResetPreview,
+      generateSecurityCode,
+      executeCriticalReset,
       fetchAuditLogs,
       refreshData: fetchItems
     }}>

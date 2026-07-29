@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { LayoutDashboard, Box, Package, ShoppingCart, Users, RefreshCw, ReceiptText, FileSpreadsheet, Settings, Shield, LogOut, HeartHandshake, Handshake, ShieldCheck, X } from 'lucide-react';
+import { LayoutDashboard, Box, Package, ShoppingCart, Users, RefreshCw, ReceiptText, FileSpreadsheet, Settings, Shield, LogOut, HeartHandshake, Handshake, ShieldCheck, X, HelpCircle } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import { LanguageContext } from '../../context/LanguageContext';
 import { canAccessPage, getRoleProfile } from '../../config/roles';
@@ -29,13 +29,14 @@ export const Sidebar = ({ activePage, setActivePage, mobileOpen = false, closeMo
 
   const settingsMenuItems = [
     { id: 'Settings', name: t.settings, icon: <Settings size={20} /> },
+    { id: 'Help', name: t.help || 'Help', icon: <HelpCircle size={20} /> },
   ];
 
   const menuItems = user?.role === 'admin'
     ? [...baseMenuItems, ...adminMenuItems, ...settingsMenuItems]
     : user?.role === 'manager'
       ? [...baseMenuItems.filter((item) => canAccessPage(user?.role, item.id)), ...settingsMenuItems]
-    : baseMenuItems.filter((item) => canAccessPage(user?.role, item.id));
+    : [...baseMenuItems.filter((item) => canAccessPage(user?.role, item.id)), ...settingsMenuItems.filter((item) => canAccessPage(user?.role, item.id))];
   const roleProfile = getRoleProfile(user?.role);
 
   return (

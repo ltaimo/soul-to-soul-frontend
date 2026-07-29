@@ -18,6 +18,7 @@ import { Reports } from './pages/Reports';
 import { AuditLogs } from './pages/AuditLogs';
 import { Settings } from './pages/Settings';
 import { Users } from './pages/Users';
+import { HelpCenter } from './pages/HelpCenter';
 import { Login } from './pages/Login';
 import { canAccessPage, getRoleProfile } from './config/roles';
 
@@ -86,6 +87,8 @@ function AppContent() {
         return <Users />;
       case 'Settings':
         return <Settings />;
+      case 'Help':
+        return <HelpCenter />;
       default:
         return (
           <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: 'var(--color-charcoal-light)' }}>
