@@ -121,7 +121,7 @@ export const Settings = () => {
       if (result.success) setResetPreview(result.preview);
       else setStatusMsg(`Error: ${result.error}`);
     });
-  }, [activeSection, user?.role]);
+  }, [activeSection, fetchResetPreview, user?.role]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

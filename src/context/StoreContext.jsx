@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { AuthContext } from './AuthContext';
 import { buildNotifications } from '../utils/notifications';
 
@@ -60,7 +60,7 @@ export const StoreProvider = ({ children }) => {
   const canAccessHr = ['admin', 'manager'].includes(user?.role);
   const canAccessAudit = ['admin', 'manager'].includes(user?.role);
 
-  const fetchWithAuth = async (url, options = {}) => {
+  const fetchWithAuth = useCallback(async (url, options = {}) => {
     const headers = { ...options.headers };
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
@@ -71,9 +71,9 @@ export const StoreProvider = ({ children }) => {
       throw new Error("Session expired. Please log in again.");
     }
     return res;
-  };
+  }, [token, logout]);
 
-  const fetchItems = async () => {
+  const fetchItems = useCallback(async () => {
     try {
       const [prodRes, suppRes, warehousesRes, warehouseStockRes, transfersRes, customersRes, commercialPartnersRes, settingsRes, fundRequestsRes] = await Promise.all([
         fetchWithAuth(`${apiBaseUrl}/api/products`),
@@ -141,11 +141,11 @@ export const StoreProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiBaseUrl, canAccessAudit, canAccessHr, fetchWithAuth]);
 
   useEffect(() => {
     fetchItems();
-  }, [token, user?.role]);
+  }, [fetchItems]);
 
   const totalInventoryValue = products.reduce((acc, p) => acc + (p.costPrice * p.stock), 0);
   
@@ -588,7 +588,7 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
-  const fetchResetPreview = async () => {
+  const fetchResetPreview = useCallback(async () => {
     try {
       const response = await fetchWithAuth(`${apiBaseUrl}/api/admin-tools/reset-preview`);
       const result = await response.json();
@@ -597,7 +597,7 @@ export const StoreProvider = ({ children }) => {
     } catch (e) {
       return { success: false, error: e.message || 'Failed to load reset preview' };
     }
-  };
+  }, [apiBaseUrl, fetchWithAuth]);
 
   const generateSecurityCode = async (data) => {
     try {

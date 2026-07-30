@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useCallback, useState, useEffect, useContext } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, 
   LineChart, Line, PieChart, Pie, Cell 
@@ -22,7 +22,7 @@ export const Dashboard = ({ setActivePage }) => {
   const canSeeFinancials = user?.role === 'admin' || user?.role === 'manager';
   const canSeeAlerts = ['admin', 'manager', 'stock_manager', 'production_manager', 'viewer'].includes(user?.role);
 
-  const loadAnalytics = async () => {
+  const loadAnalytics = useCallback(async () => {
     setIsRefreshing(true);
     const fetchOptions = {
       cache: 'no-store',
@@ -49,11 +49,11 @@ export const Dashboard = ({ setActivePage }) => {
       setLastUpdated(new Date());
     }).catch(err => console.error("Could not fetch analytics", err))
       .finally(() => setIsRefreshing(false));
-  };
+  }, [canSeeAlerts, canSeeFinancials, logout, token]);
 
   useEffect(() => {
     loadAnalytics();
-  }, [token, logout, canSeeFinancials, canSeeAlerts]);
+  }, [loadAnalytics]);
 
   if ((canSeeFinancials && !kpis) || (canSeeAlerts && !alerts)) return <div style={{ padding: '2rem' }}>{translate('loadingBi')}</div>;
 

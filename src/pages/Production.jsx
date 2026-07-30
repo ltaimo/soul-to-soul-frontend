@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, PlayCircle, Plus, Trash2 } from 'lucide-react';
 import { StoreContext } from '../context/StoreContext';
 import { AuthContext } from '../context/AuthContext';
@@ -22,7 +22,7 @@ export const Production = () => {
   const selectedProduct = products.find((product) => product.id === Number(selectedProductId));
   const qtyToMake = Number(targetQuantity) || 0;
 
-  const fetchWithAuth = async (url, options = {}) => {
+  const fetchWithAuth = useCallback(async (url, options = {}) => {
     const headers = { ...options.headers, Authorization: `Bearer ${token}` };
     const res = await fetch(url, { ...options, headers });
     if (res.status === 401) {
@@ -30,7 +30,7 @@ export const Production = () => {
       throw new Error('Session expired. Please log in again.');
     }
     return res;
-  };
+  }, [logout, token]);
 
   const finishedGoods = useMemo(() => {
     return products
@@ -44,7 +44,7 @@ export const Production = () => {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [products, selectedProductId]);
 
-  const fetchBom = async (productId) => {
+  const fetchBom = useCallback(async (productId) => {
     if (!productId) {
       setBomDetails([]);
       return;
@@ -62,11 +62,11 @@ export const Production = () => {
     } finally {
       setLoadingBom(false);
     }
-  };
+  }, [fetchWithAuth]);
 
   useEffect(() => {
     fetchBom(selectedProductId);
-  }, [selectedProductId]);
+  }, [fetchBom, selectedProductId]);
 
   const checklist = bomDetails.map((item) => {
     const required = item.quantityRequired * qtyToMake;

@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -51,7 +51,7 @@ export const SalesInsights = () => {
   const saleChannels = ['Store', 'Online', 'Order', 'Reseller'];
   const fulfillmentStatuses = ['Delivered', 'Pending', 'In Transit', 'Pickup'];
 
-  const fetchWithAuth = async (url, options = {}) => {
+  const fetchWithAuth = useCallback(async (url, options = {}) => {
     const headers = { ...options.headers, Authorization: `Bearer ${token}` };
     const res = await fetch(url, { ...options, headers });
     if (res.status === 401) {
@@ -59,20 +59,20 @@ export const SalesInsights = () => {
       throw new Error('Session expired. Please log in again.');
     }
     return res;
-  };
+  }, [logout, token]);
 
-  const fetchSales = async () => {
+  const fetchSales = useCallback(async () => {
     try {
       const res = await fetchWithAuth(`${API_BASE}/api/sales`);
       setSalesRecord(await res.json());
     } catch (e) {
       setErrorMsg(e.message || 'Could not load sales history.');
     }
-  };
+  }, [fetchWithAuth]);
 
   useEffect(() => {
     fetchSales();
-  }, [token]);
+  }, [fetchSales]);
 
   const saleableProducts = useMemo(() => {
     return products
@@ -80,10 +80,10 @@ export const SalesInsights = () => {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [products]);
 
-  const availableInWarehouse = (productId) => {
+  const availableInWarehouse = useCallback((productId) => {
     const row = warehouseStock.find((stock) => stock.productId === productId && stock.warehouseId === fulfillmentWarehouseId);
     return row?.quantity ?? 0;
-  };
+  }, [fulfillmentWarehouseId, warehouseStock]);
 
   const filteredProducts = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -115,7 +115,7 @@ export const SalesInsights = () => {
         hasStockIssue: !product || line.quantity > available,
       };
     });
-  }, [cart, products, warehouseStock, fulfillmentWarehouseId]);
+  }, [availableInWarehouse, cart, products]);
 
   const totals = cartLines.reduce(
     (acc, line) => ({

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useCallback, useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { StoreContext } from '../context/StoreContext';
 import { Plus, X, Edit, UserCheck, UserX, ShieldAlert, KeyRound, Phone, AtSign, CheckCircle2, AlertTriangle } from 'lucide-react';
@@ -39,15 +39,15 @@ export const Users = () => {
     notify.timer = window.setTimeout(() => setToast(null), 4200);
   };
 
-  const fetchWithAuth = async (url, options = {}) => {
+  const fetchWithAuth = useCallback(async (url, options = {}) => {
     const headers = { ...options.headers };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(url, { ...options, headers });
     if (res.status === 401) { logout(); throw new Error("Session Expired"); }
     return res;
-  };
+  }, [logout, token]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       const res = await fetchWithAuth(`${API_BASE}/api/users`);
       const data = await res.json();
@@ -57,11 +57,11 @@ export const Users = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchWithAuth]);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   const openCreate = () => {
     setFormData(initialFormData);
