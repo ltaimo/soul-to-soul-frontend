@@ -1,5 +1,5 @@
 import React, { useContext, useMemo, useState } from 'react';
-import { CheckCircle, Mail, MessageCircle, Printer, Send, Sparkles, XCircle } from 'lucide-react';
+import { Banknote, CalendarDays, CheckCircle, ClipboardCheck, Filter, Mail, MessageCircle, Printer, Send, Sparkles, UserRound, WalletCards, XCircle } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import { StoreContext } from '../context/StoreContext';
 import { formatCurrency } from '../utils/formatters';
@@ -53,6 +53,7 @@ export const FundRequests = () => {
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const [reviewNotes, setReviewNotes] = useState({});
+  const [activeStatus, setActiveStatus] = useState('All');
 
   const canApprove = ['admin', 'manager'].includes(user?.role);
   const activeOptions = (options, fallback = []) => (
@@ -68,6 +69,10 @@ export const FundRequests = () => {
     acc[request.status] = (acc[request.status] || 0) + (request.amount || 0);
     return acc;
   }, { total: 0 }), [fundRequests]);
+  const statusTabs = ['All', 'Pending', 'Approved', 'Paid', 'Rejected', 'Cancelled'];
+  const filteredRequests = activeStatus === 'All'
+    ? fundRequests
+    : fundRequests.filter((request) => request.status === activeStatus);
 
   const updateForm = (field, value) => setForm((current) => ({ ...current, [field]: value }));
 
@@ -186,97 +191,154 @@ export const FundRequests = () => {
   };
 
   return (
-    <div>
-      <div className="page-header">
+    <div className="fund-page">
+      <section className="fund-hero">
         <div>
-          <h1 className="page-title">Requisicao de Fundos</h1>
-          <p className="page-subtitle">Pedidos internos com aprovacao, historico e saida para PDF, email ou WhatsApp.</p>
+          <span className="eyebrow">Finance workflow</span>
+          <h1>Requisicao de Fundos</h1>
+          <p>Um fluxo simples para pedir, aprovar, pagar e manter historico sem perder o rasto.</p>
         </div>
-      </div>
+        <div className="fund-hero-metrics">
+          <div><span>Total</span><strong>{formatCurrency(totals.total, settings)}</strong></div>
+          <div><span>Pendente</span><strong>{formatCurrency(totals.Pending || 0, settings)}</strong></div>
+          <div><span>Aprovado</span><strong>{formatCurrency(totals.Approved || 0, settings)}</strong></div>
+        </div>
+      </section>
 
-      {message && <div className="info-banner" style={{ marginBottom: '1rem' }}>{message}</div>}
+      {message && <div className="info-banner fund-message">{message}</div>}
 
-      <div className="stats-grid">
-        <div className="stat-card"><div className="stat-label">Total solicitado</div><div className="stat-value">{formatCurrency(totals.total, settings)}</div></div>
-        <div className="stat-card"><div className="stat-label">Pendente</div><div className="stat-value">{formatCurrency(totals.Pending || 0, settings)}</div></div>
-        <div className="stat-card"><div className="stat-label">Aprovado</div><div className="stat-value">{formatCurrency(totals.Approved || 0, settings)}</div></div>
-        <div className="stat-card"><div className="stat-label">Pago</div><div className="stat-value">{formatCurrency(totals.Paid || 0, settings)}</div></div>
-      </div>
-
-      <div className="content-grid" style={{ alignItems: 'start' }}>
-        <form className="card" onSubmit={submit}>
-          <h3 style={{ marginBottom: '1rem' }}>Novo pedido</h3>
-          <p className="page-subtitle" style={{ marginBottom: '1rem' }}>
-            Criado por: <strong>{user?.fullName || user?.email}</strong>
-          </p>
-          <div className="form-grid-2">
-            <label>Tipo de pedido<select value={form.title} onChange={(event) => updateForm('title', event.target.value)} required>{requestTitles.map((item) => <option key={item}>{item}</option>)}</select></label>
-            <label>Categoria<select value={form.category} onChange={(event) => updateForm('category', event.target.value)}>{categories.map((item) => <option key={item}>{item}</option>)}</select></label>
-            <label>Valor<input type="number" min="0" step="0.01" value={form.amount} onChange={(event) => updateForm('amount', event.target.value)} required /></label>
-            <label>Necessario ate<input type="date" value={form.neededBy} onChange={(event) => updateForm('neededBy', event.target.value)} /></label>
-            <label>Prioridade<select value={form.priority} onChange={(event) => updateForm('priority', event.target.value)}>{priorities.map((item) => <option key={item}>{item}</option>)}</select></label>
-            <label>Departamento<select value={form.department} onChange={(event) => updateForm('department', event.target.value)}><option value="">Selecionar</option>{departmentOptions.map((item) => <option key={item}>{item}</option>)}</select></label>
-            <label>Metodo de pagamento<select value={form.paymentMethod} onChange={(event) => updateForm('paymentMethod', event.target.value)}><option value="">Selecionar</option>{paymentMethodOptions.map((item) => <option key={item}>{item}</option>)}</select></label>
-            <label>Beneficiario<input value={form.payeeName} onChange={(event) => updateForm('payeeName', event.target.value)} /></label>
-            <label>Telefone<input value={form.payeePhone} onChange={(event) => updateForm('payeePhone', event.target.value)} /></label>
-            <label>Banco / conta<input value={form.payeeBank} onChange={(event) => updateForm('payeeBank', event.target.value)} /></label>
+      <div className="fund-layout">
+        <form className="fund-form-card" onSubmit={submit}>
+          <div className="fund-card-heading">
+            <span className="fund-card-icon"><WalletCards size={20} /></span>
+            <div>
+              <h3>Novo pedido</h3>
+              <p>Criado por <strong>{user?.fullName || user?.email}</strong></p>
+            </div>
           </div>
-          <div className="priority-pills">
-            {priorities.map((priority) => (
-              <button
-                key={priority}
-                type="button"
-                className={`choice-pill ${form.priority === priority ? 'is-active' : ''}`}
-                onClick={() => updateForm('priority', priority)}
-              >
-                <Sparkles size={14} /> {priority}
-              </button>
-            ))}
+
+          <div className="fund-section">
+            <span className="fund-section-label">1. O que precisa?</span>
+            <div className="fund-choice-grid">
+              {requestTitles.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className={`fund-choice-card ${form.title === item ? 'is-active' : ''}`}
+                  onClick={() => updateForm('title', item)}
+                >
+                  <ClipboardCheck size={17} />
+                  <span>{item}</span>
+                </button>
+              ))}
+            </div>
           </div>
-          <label style={{ display: 'block', marginTop: '1rem' }}>Detalhes / justificacao<textarea rows="4" value={form.description} onChange={(event) => updateForm('description', event.target.value)} placeholder="Explique o motivo, fornecedor, destino ou contexto do pedido." /></label>
-          <button className="btn btn-primary" type="submit" disabled={saving} style={{ marginTop: '1rem' }}>
+
+          <div className="fund-section">
+            <span className="fund-section-label">2. Dados principais</span>
+            <div className="fund-fields">
+              <label>Categoria<select value={form.category} onChange={(event) => updateForm('category', event.target.value)}>{categories.map((item) => <option key={item}>{item}</option>)}</select></label>
+              <label>Valor<input type="number" min="0" step="0.01" value={form.amount} onChange={(event) => updateForm('amount', event.target.value)} required placeholder="0.00" /></label>
+              <label>Necessario ate<input type="date" value={form.neededBy} onChange={(event) => updateForm('neededBy', event.target.value)} /></label>
+              <label>Departamento<select value={form.department} onChange={(event) => updateForm('department', event.target.value)}><option value="">Selecionar</option>{departmentOptions.map((item) => <option key={item}>{item}</option>)}</select></label>
+            </div>
+          </div>
+
+          <div className="fund-section">
+            <span className="fund-section-label">3. Prioridade e pagamento</span>
+            <div className="priority-pills">
+              {priorities.map((priority) => (
+                <button
+                  key={priority}
+                  type="button"
+                  className={`choice-pill ${form.priority === priority ? 'is-active' : ''}`}
+                  onClick={() => updateForm('priority', priority)}
+                >
+                  <Sparkles size={14} /> {priority}
+                </button>
+              ))}
+            </div>
+            <div className="fund-fields">
+              <label>Metodo de pagamento<select value={form.paymentMethod} onChange={(event) => updateForm('paymentMethod', event.target.value)}><option value="">Selecionar</option>{paymentMethodOptions.map((item) => <option key={item}>{item}</option>)}</select></label>
+              <label>Beneficiario<input value={form.payeeName} onChange={(event) => updateForm('payeeName', event.target.value)} placeholder="Nome do fornecedor ou pessoa" /></label>
+              <label>Telefone<input value={form.payeePhone} onChange={(event) => updateForm('payeePhone', event.target.value)} placeholder="+258..." /></label>
+              <label>Banco / conta<input value={form.payeeBank} onChange={(event) => updateForm('payeeBank', event.target.value)} placeholder="Opcional" /></label>
+            </div>
+          </div>
+
+          <div className="fund-section">
+            <span className="fund-section-label">4. Justificacao</span>
+            <label className="fund-textarea">Detalhes<textarea rows="4" value={form.description} onChange={(event) => updateForm('description', event.target.value)} placeholder="Explique o motivo, fornecedor, destino ou contexto do pedido." /></label>
+          </div>
+
+          <button className="btn btn-primary fund-submit" type="submit" disabled={saving}>
             <Send size={16} /> {saving ? 'A enviar...' : 'Enviar requisicao'}
           </button>
         </form>
 
-        <div className="card">
-          <h3 style={{ marginBottom: '1rem' }}>Historico e aprovacao</h3>
-          <div style={{ display: 'grid', gap: '1rem' }}>
-            {fundRequests.map((request) => (
-              <div key={request.id} className="soft-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'start' }}>
-                  <div>
-                    <strong>{request.requestNumber} - {request.title}</strong>
-                    <p className="page-subtitle">{request.requesterName} - {request.category} - {request.neededBy ? new Date(request.neededBy).toLocaleDateString() : 'Sem data limite'}</p>
-                  </div>
+        <section className="fund-review-panel">
+          <div className="fund-review-header">
+            <div>
+              <span className="eyebrow">Review board</span>
+              <h3>Revisao e aprovacao</h3>
+              <p>{filteredRequests.length} pedidos nesta vista</p>
+            </div>
+            <Filter size={20} />
+          </div>
+
+          <div className="fund-status-tabs">
+            {statusTabs.map((status) => (
+              <button
+                key={status}
+                type="button"
+                className={activeStatus === status ? 'is-active' : ''}
+                onClick={() => setActiveStatus(status)}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
+
+          <div className="fund-review-list">
+            {filteredRequests.map((request) => (
+              <article key={request.id} className={`fund-review-card ${request.status.toLowerCase()}`}>
+                <div className="fund-review-topline">
                   <span className={`status-pill ${statusColors[request.status] || 'muted'}`}>{request.status}</span>
+                  <span>{request.requestNumber}</span>
                 </div>
-                <p style={{ margin: '0.75rem 0', color: 'var(--color-charcoal-light)' }}>{request.description || 'Sem descricao adicional.'}</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                <div className="fund-review-title">
+                  <div>
+                    <h4>{request.title}</h4>
+                    <p>{request.description || 'Sem descricao adicional.'}</p>
+                  </div>
                   <strong>{formatCurrency(request.amount, settings)}</strong>
-                  <span>Prioridade: {request.priority}</span>
-                  {request.payeeName && <span>Beneficiario: {request.payeeName}</span>}
-                  {request.reviewedByName && <span>Revisto por: {request.reviewedByName}</span>}
                 </div>
+                <div className="fund-meta-row">
+                  <span><UserRound size={14} /> {request.requesterName}</span>
+                  <span><CalendarDays size={14} /> {request.neededBy ? new Date(request.neededBy).toLocaleDateString() : 'Sem data'}</span>
+                  <span><Banknote size={14} /> {request.paymentMethod || 'Metodo por definir'}</span>
+                  <span><Sparkles size={14} /> {request.priority}</span>
+                </div>
+
                 {canApprove && request.status === 'Pending' && (
-                  <div style={{ display: 'grid', gap: '0.6rem', marginTop: '0.8rem' }}>
+                  <div className="fund-review-actions">
                     <input
                       placeholder="Nota de revisao opcional"
                       value={reviewNotes[request.id] || ''}
                       onChange={(event) => setReviewNotes((current) => ({ ...current, [request.id]: event.target.value }))}
                     />
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      <button className="btn btn-primary" type="button" onClick={() => changeStatus(request, 'Approved')}><CheckCircle size={16} /> Aprovar</button>
-                      <button className="btn" type="button" onClick={() => changeStatus(request, 'Rejected')}><XCircle size={16} /> Rejeitar</button>
-                    </div>
+                    <button className="btn btn-primary" type="button" onClick={() => changeStatus(request, 'Approved')}><CheckCircle size={16} /> Aprovar</button>
+                    <button className="btn" type="button" onClick={() => changeStatus(request, 'Rejected')}><XCircle size={16} /> Rejeitar</button>
                   </div>
                 )}
+
                 {canApprove && request.status === 'Approved' && (
-                  <button className="btn btn-primary" type="button" onClick={() => changeStatus(request, 'Paid')} style={{ marginTop: '0.8rem' }}>
+                  <button className="btn btn-primary fund-pay-button" type="button" onClick={() => changeStatus(request, 'Paid')}>
                     Marcar como pago
                   </button>
                 )}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.8rem' }}>
+
+                <div className="fund-secondary-actions">
                   <button className="btn btn-ghost" type="button" onClick={() => printRequest(request)}><Printer size={16} /> PDF/Print</button>
                   <a className="btn btn-ghost" href={`mailto:?subject=${encodeURIComponent(request.requestNumber)}&body=${encodeURIComponent(requestText(request))}`}><Mail size={16} /> Email</a>
                   <a className="btn btn-ghost" href={`https://wa.me/?text=${encodeURIComponent(requestText(request))}`} target="_blank" rel="noreferrer"><MessageCircle size={16} /> WhatsApp</a>
@@ -284,11 +346,17 @@ export const FundRequests = () => {
                     <button className="btn btn-ghost" type="button" onClick={() => cancel(request)}>Cancelar</button>
                   )}
                 </div>
-              </div>
+              </article>
             ))}
-            {fundRequests.length === 0 && <p className="page-subtitle">Ainda nao existem requisicoes de fundos.</p>}
+            {filteredRequests.length === 0 && (
+              <div className="empty-state">
+                <CheckCircle size={32} />
+                <h3>Nada para mostrar aqui</h3>
+                <p>Quando houver pedidos neste estado, eles aparecem nesta lista.</p>
+              </div>
+            )}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

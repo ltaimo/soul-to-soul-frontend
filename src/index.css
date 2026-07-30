@@ -1345,6 +1345,334 @@ tr:hover {
   border-color: rgba(107, 142, 126, 0.45);
 }
 
+.fund-page {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.fund-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.5rem;
+  align-items: end;
+  padding: 1.6rem;
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at top right, rgba(107, 142, 126, 0.18), transparent 34%),
+    linear-gradient(135deg, rgba(255, 250, 240, 0.96), rgba(232, 220, 203, 0.42));
+  border: 1px solid rgba(107, 142, 126, 0.18);
+  box-shadow: var(--shadow-soft);
+}
+
+.eyebrow {
+  display: inline-flex;
+  margin-bottom: 0.45rem;
+  color: var(--color-primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.fund-hero h1 {
+  margin: 0 0 0.35rem;
+  color: var(--color-primary-deep);
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  line-height: 1.05;
+}
+
+.fund-hero p {
+  max-width: 48rem;
+  margin: 0;
+  color: var(--color-charcoal-light);
+}
+
+.fund-hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.fund-hero-metrics div {
+  min-width: 120px;
+  padding: 0.85rem;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(107, 142, 126, 0.16);
+}
+
+.fund-hero-metrics span,
+.fund-card-heading p,
+.fund-review-header p {
+  display: block;
+  color: var(--color-charcoal-light);
+  font-size: 0.78rem;
+}
+
+.fund-hero-metrics strong {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--color-charcoal);
+  font-size: 1rem;
+}
+
+.fund-message {
+  margin: 0;
+}
+
+.fund-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.95fr) minmax(360px, 1.05fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.fund-form-card,
+.fund-review-panel {
+  border: 1px solid rgba(107, 142, 126, 0.16);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.fund-form-card {
+  padding: 1.1rem;
+}
+
+.fund-card-heading,
+.fund-review-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 0.4rem 0.35rem 1rem;
+}
+
+.fund-card-heading h3,
+.fund-review-header h3 {
+  margin: 0.1rem 0;
+  color: var(--color-primary-deep);
+}
+
+.fund-card-heading p,
+.fund-review-header p {
+  margin: 0;
+}
+
+.fund-card-icon {
+  width: 2.55rem;
+  height: 2.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  color: var(--color-primary);
+  background: rgba(107, 142, 126, 0.12);
+  flex: 0 0 auto;
+}
+
+.fund-section {
+  margin-top: 0.9rem;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  background: rgba(247, 245, 242, 0.62);
+  border: 1px solid rgba(107, 142, 126, 0.11);
+}
+
+.fund-section-label {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.fund-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.fund-choice-card {
+  display: flex;
+  min-height: 4.5rem;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.8rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(107, 142, 126, 0.18);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--color-charcoal);
+  text-align: left;
+  font-weight: 700;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.fund-choice-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(107, 142, 126, 0.38);
+}
+
+.fund-choice-card.is-active {
+  background: rgba(107, 142, 126, 0.12);
+  border-color: rgba(107, 142, 126, 0.55);
+  color: var(--color-primary-deep);
+}
+
+.fund-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.fund-fields label,
+.fund-textarea {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--color-charcoal);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.fund-textarea textarea {
+  min-height: 7rem;
+}
+
+.fund-submit {
+  width: 100%;
+  margin-top: 1rem;
+  justify-content: center;
+  padding: 0.9rem 1rem;
+}
+
+.fund-review-panel {
+  padding: 1.1rem;
+}
+
+.fund-status-tabs {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.2rem 0.1rem 0.85rem;
+}
+
+.fund-status-tabs button {
+  border: 1px solid rgba(107, 142, 126, 0.18);
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  background: rgba(247, 245, 242, 0.72);
+  color: var(--color-charcoal-light);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.fund-status-tabs button.is-active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.fund-review-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.fund-review-card {
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 250, 240, 0.72));
+  border: 1px solid rgba(107, 142, 126, 0.14);
+}
+
+.fund-review-card.pending {
+  border-left: 4px solid var(--color-warning);
+}
+
+.fund-review-card.approved,
+.fund-review-card.paid {
+  border-left: 4px solid #2f7047;
+}
+
+.fund-review-card.rejected,
+.fund-review-card.cancelled {
+  border-left: 4px solid var(--color-danger);
+}
+
+.fund-review-topline,
+.fund-meta-row,
+.fund-secondary-actions,
+.fund-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.fund-review-topline {
+  justify-content: space-between;
+  color: var(--color-charcoal-light);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.fund-review-title {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  align-items: start;
+}
+
+.fund-review-title h4 {
+  margin: 0 0 0.35rem;
+  color: var(--color-charcoal);
+}
+
+.fund-review-title p {
+  margin: 0;
+  color: var(--color-charcoal-light);
+}
+
+.fund-review-title strong {
+  color: var(--color-primary-deep);
+  font-size: 1.15rem;
+}
+
+.fund-meta-row {
+  margin-top: 0.85rem;
+}
+
+.fund-meta-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(107, 142, 126, 0.08);
+  color: var(--color-charcoal-light);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.fund-review-actions {
+  margin-top: 0.9rem;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  background: rgba(107, 142, 126, 0.07);
+}
+
+.fund-review-actions input {
+  flex: 1 1 220px;
+}
+
+.fund-pay-button {
+  margin-top: 0.9rem;
+}
+
+.fund-secondary-actions {
+  margin-top: 0.85rem;
+}
+
 .settings-grid,
 .reports-grid {
   display: grid;
@@ -2287,9 +2615,35 @@ tr:hover {
 
   .settings-grid,
   .reports-grid,
-  .content-grid {
+  .content-grid,
+  .fund-layout,
+  .fund-hero {
     grid-template-columns: 1fr;
     gap: 1rem;
+  }
+
+  .fund-hero {
+    padding: 1.1rem;
+  }
+
+  .fund-hero-metrics,
+  .fund-choice-grid,
+  .fund-fields,
+  .fund-review-title {
+    grid-template-columns: 1fr;
+  }
+
+  .fund-form-card,
+  .fund-review-panel,
+  .fund-section,
+  .fund-review-card {
+    border-radius: var(--radius-md);
+  }
+
+  .fund-review-actions .btn,
+  .fund-secondary-actions .btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .settings-shell {
