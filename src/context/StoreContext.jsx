@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { AuthContext } from './AuthContext';
+import { buildNotifications } from '../utils/notifications';
 
 export const StoreContext = createContext();
 
@@ -152,6 +153,15 @@ export const StoreProvider = ({ children }) => {
     if (!selling || selling <= 0) return 0;
     return (((selling - cost) / selling) * 100).toFixed(1);
   };
+
+  const notifications = buildNotifications({
+    user,
+    fundRequests,
+    warehouseStock,
+    stockTransfers,
+    hrPayments,
+    workGoals,
+  });
 
   const receiveGoods = async (productId, receivedQty, landedCost, selectedSupplierId, warehouseId) => {
     const prod = products.find(p => p.id === productId);
@@ -790,6 +800,7 @@ export const StoreProvider = ({ children }) => {
       customers,
       commercialPartners,
       fundRequests,
+      notifications,
       employees,
       hrPayments,
       payrollSheet,

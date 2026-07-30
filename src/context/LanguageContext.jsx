@@ -3,6 +3,7 @@ import React, { createContext, useEffect, useMemo, useState } from 'react';
 const translations = {
   en: {
     dashboard: 'Dashboard',
+    notifications: 'Notifications',
     products: 'Products',
     inventory: 'Inventory',
     purchasing: 'Purchasing',
@@ -206,6 +207,7 @@ const translations = {
   },
   pt: {
     dashboard: 'Painel',
+    notifications: 'Notificacoes',
     products: 'Produtos',
     inventory: 'Inventario',
     purchasing: 'Compras',

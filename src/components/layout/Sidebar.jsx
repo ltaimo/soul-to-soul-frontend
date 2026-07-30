@@ -1,15 +1,18 @@
 import React, { useContext } from 'react';
-import { LayoutDashboard, Box, Package, ShoppingCart, Users, RefreshCw, ReceiptText, FileSpreadsheet, Settings, Shield, LogOut, HeartHandshake, Handshake, ShieldCheck, X, HelpCircle, HandCoins } from 'lucide-react';
+import { LayoutDashboard, Box, Package, ShoppingCart, Users, RefreshCw, ReceiptText, FileSpreadsheet, Settings, Shield, LogOut, HeartHandshake, Handshake, ShieldCheck, X, HelpCircle, HandCoins, Bell } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import { LanguageContext } from '../../context/LanguageContext';
+import { StoreContext } from '../../context/StoreContext';
 import { canAccessPage, getRoleProfile } from '../../config/roles';
 
 export const Sidebar = ({ activePage, setActivePage, mobileOpen = false, closeMobile }) => {
   const { user, logout } = useContext(AuthContext);
   const { language, setLanguage, t } = useContext(LanguageContext);
+  const { notifications = [] } = useContext(StoreContext);
 
   const baseMenuItems = [
     { id: 'Dashboard', name: t.dashboard, icon: <LayoutDashboard size={20} /> },
+    { id: 'Notifications', name: t.notifications || 'Notifications', icon: <Bell size={20} />, badge: notifications.length },
     { id: 'Products', name: t.products, icon: <Box size={20} /> },
     { id: 'Inventory', name: t.inventory, icon: <Package size={20} /> },
     { id: 'Purchasing', name: t.purchasing, icon: <ShoppingCart size={20} /> },
@@ -80,7 +83,8 @@ export const Sidebar = ({ activePage, setActivePage, mobileOpen = false, closeMo
             }}
           >
             {item.icon}
-            {item.name}
+            <span style={{ flex: 1 }}>{item.name}</span>
+            {item.badge > 0 && <span className="nav-badge">{item.badge > 99 ? '99+' : item.badge}</span>}
           </button>
         ))}
       </nav>
