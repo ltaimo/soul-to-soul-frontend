@@ -1,28 +1,39 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { Suspense, lazy, useContext, useEffect, useState } from 'react';
 import { Menu } from 'lucide-react';
 import { StoreProvider } from './context/StoreContext';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { LanguageProvider, LanguageContext } from './context/LanguageContext';
 import { Sidebar } from './components/layout/Sidebar';
-import { Dashboard } from './pages/Dashboard';
-import { Products } from './pages/Products';
-import { Inventory } from './pages/Inventory';
-import { Purchasing } from './pages/Purchasing';
-import { Suppliers } from './pages/Suppliers';
-import { Customers } from './pages/Customers';
-import { CommercialPartners } from './pages/CommercialPartners';
-import { FundRequests } from './pages/FundRequests';
-import { Notifications } from './pages/Notifications';
-import { HumanResources } from './pages/HumanResources';
-import { Production } from './pages/Production';
-import { SalesInsights } from './pages/SalesInsights';
-import { Reports } from './pages/Reports';
-import { AuditLogs } from './pages/AuditLogs';
-import { Settings } from './pages/Settings';
-import { Users } from './pages/Users';
-import { HelpCenter } from './pages/HelpCenter';
 import { Login } from './pages/Login';
 import { canAccessPage, getRoleProfile } from './config/roles';
+
+const Dashboard = lazy(() => import('./pages/Dashboard').then((module) => ({ default: module.Dashboard })));
+const Products = lazy(() => import('./pages/Products').then((module) => ({ default: module.Products })));
+const Inventory = lazy(() => import('./pages/Inventory').then((module) => ({ default: module.Inventory })));
+const Purchasing = lazy(() => import('./pages/Purchasing').then((module) => ({ default: module.Purchasing })));
+const Suppliers = lazy(() => import('./pages/Suppliers').then((module) => ({ default: module.Suppliers })));
+const Customers = lazy(() => import('./pages/Customers').then((module) => ({ default: module.Customers })));
+const CommercialPartners = lazy(() => import('./pages/CommercialPartners').then((module) => ({ default: module.CommercialPartners })));
+const FundRequests = lazy(() => import('./pages/FundRequests').then((module) => ({ default: module.FundRequests })));
+const Notifications = lazy(() => import('./pages/Notifications').then((module) => ({ default: module.Notifications })));
+const HumanResources = lazy(() => import('./pages/HumanResources').then((module) => ({ default: module.HumanResources })));
+const Production = lazy(() => import('./pages/Production').then((module) => ({ default: module.Production })));
+const SalesInsights = lazy(() => import('./pages/SalesInsights').then((module) => ({ default: module.SalesInsights })));
+const Reports = lazy(() => import('./pages/Reports').then((module) => ({ default: module.Reports })));
+const AuditLogs = lazy(() => import('./pages/AuditLogs').then((module) => ({ default: module.AuditLogs })));
+const Settings = lazy(() => import('./pages/Settings').then((module) => ({ default: module.Settings })));
+const Users = lazy(() => import('./pages/Users').then((module) => ({ default: module.Users })));
+const HelpCenter = lazy(() => import('./pages/HelpCenter').then((module) => ({ default: module.HelpCenter })));
+
+const PageLoading = () => (
+  <div className="card page-loading" role="status" aria-live="polite">
+    <div className="loading-orb" />
+    <div>
+      <strong>Loading module</strong>
+      <span>Preparing Soul2Soul workspace...</span>
+    </div>
+  </div>
+);
 
 function AppContent() {
   const { user } = useContext(AuthContext);
@@ -134,7 +145,9 @@ function AppContent() {
             </div>
           </header>
           <main className="main-content">
-            {renderContent()}
+            <Suspense fallback={<PageLoading />}>
+              {renderContent()}
+            </Suspense>
           </main>
         </div>
       </div>
