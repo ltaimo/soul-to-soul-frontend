@@ -1179,6 +1179,59 @@ tr:hover {
   gap: 1rem;
 }
 
+.content-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.1fr);
+  gap: 1.25rem;
+}
+
+.soft-card {
+  border: 1px solid rgba(107, 142, 126, 0.2);
+  border-radius: var(--radius-md);
+  background: rgba(255, 253, 246, 0.72);
+  padding: 1rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.info-banner {
+  border: 1px solid rgba(107, 142, 126, 0.25);
+  border-radius: var(--radius-md);
+  background: rgba(107, 142, 126, 0.08);
+  color: var(--color-primary);
+  padding: 0.85rem 1rem;
+  font-weight: 600;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-pill.success {
+  background: rgba(64, 128, 88, 0.12);
+  color: #2f7047;
+}
+
+.status-pill.warning {
+  background: rgba(178, 126, 43, 0.14);
+  color: #9a6420;
+}
+
+.status-pill.danger {
+  background: rgba(164, 68, 58, 0.14);
+  color: #a4443a;
+}
+
+.status-pill.muted {
+  background: rgba(75, 82, 72, 0.1);
+  color: var(--color-charcoal-light);
+}
+
 .settings-grid,
 .reports-grid {
   display: grid;
@@ -2120,7 +2173,8 @@ tr:hover {
   }
 
   .settings-grid,
-  .reports-grid {
+  .reports-grid,
+  .content-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
   }

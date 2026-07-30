@@ -11,6 +11,7 @@ import { Purchasing } from './pages/Purchasing';
 import { Suppliers } from './pages/Suppliers';
 import { Customers } from './pages/Customers';
 import { CommercialPartners } from './pages/CommercialPartners';
+import { FundRequests } from './pages/FundRequests';
 import { HumanResources } from './pages/HumanResources';
 import { Production } from './pages/Production';
 import { SalesInsights } from './pages/SalesInsights';
@@ -75,6 +76,8 @@ function AppContent() {
         return <CommercialPartners />;
       case 'Human Resources':
         return <HumanResources />;
+      case 'Fund Requests':
+        return <FundRequests />;
       case 'Production':
         return <Production activeFilter={activeFilter} />;
       case 'Sales / POS':

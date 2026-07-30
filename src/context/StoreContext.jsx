@@ -11,6 +11,7 @@ export const StoreProvider = ({ children }) => {
   const [stockTransfers, setStockTransfers] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [commercialPartners, setCommercialPartners] = useState([]);
+  const [fundRequests, setFundRequests] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [hrPayments, setHrPayments] = useState([]);
   const [payrollSheet, setPayrollSheet] = useState(null);
@@ -73,7 +74,7 @@ export const StoreProvider = ({ children }) => {
 
   const fetchItems = async () => {
     try {
-      const [prodRes, suppRes, warehousesRes, warehouseStockRes, transfersRes, customersRes, commercialPartnersRes, settingsRes] = await Promise.all([
+      const [prodRes, suppRes, warehousesRes, warehouseStockRes, transfersRes, customersRes, commercialPartnersRes, settingsRes, fundRequestsRes] = await Promise.all([
         fetchWithAuth(`${apiBaseUrl}/api/products`),
         fetchWithAuth(`${apiBaseUrl}/api/inventory/suppliers`),
         fetchWithAuth(`${apiBaseUrl}/api/inventory/warehouses`),
@@ -81,7 +82,8 @@ export const StoreProvider = ({ children }) => {
         fetchWithAuth(`${apiBaseUrl}/api/inventory/transfers`),
         fetchWithAuth(`${apiBaseUrl}/api/customers`),
         fetchWithAuth(`${apiBaseUrl}/api/commercial-partners`),
-        fetchWithAuth(`${apiBaseUrl}/api/settings`)
+        fetchWithAuth(`${apiBaseUrl}/api/settings`),
+        fetchWithAuth(`${apiBaseUrl}/api/fund-requests`)
       ]);
       const prods = await prodRes.json();
       const supps = await suppRes.json();
@@ -91,6 +93,7 @@ export const StoreProvider = ({ children }) => {
       const custs = await customersRes.json();
       const partners = await commercialPartnersRes.json();
       const stngs = await settingsRes.json();
+      const funds = await fundRequestsRes.json();
       
       setProducts(prods);
       setSuppliers(supps);
@@ -100,6 +103,7 @@ export const StoreProvider = ({ children }) => {
       setCustomers(custs);
       setCommercialPartners(partners);
       setSettings(stngs);
+      setFundRequests(funds);
 
       if (canAccessHr) {
         const [employeesRes, paymentsRes, attendanceRes, summaryRes, payrollRes, goalsRes] = await Promise.all([
@@ -528,6 +532,52 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
+  const createFundRequest = async (data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/fund-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true, request: result.request };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to create fund request' };
+    }
+  };
+
+  const updateFundRequestStatus = async (id, data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/fund-requests/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true, request: result.request };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to update fund request' };
+    }
+  };
+
+  const cancelFundRequest = async (id) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/fund-requests/${id}/cancel`, {
+        method: 'PATCH'
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true, request: result.request };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to cancel fund request' };
+    }
+  };
+
   const fetchResetPreview = async () => {
     try {
       const response = await fetchWithAuth(`${apiBaseUrl}/api/admin-tools/reset-preview`);
@@ -739,6 +789,7 @@ export const StoreProvider = ({ children }) => {
       stockTransfers,
       customers,
       commercialPartners,
+      fundRequests,
       employees,
       hrPayments,
       payrollSheet,
@@ -772,6 +823,9 @@ export const StoreProvider = ({ children }) => {
       createCommercialPartner,
       updateCommercialPartner,
       updateCommercialPartnerStatus,
+      createFundRequest,
+      updateFundRequestStatus,
+      cancelFundRequest,
       createEmployee,
       updateEmployee,
       updateEmployeeStatus,

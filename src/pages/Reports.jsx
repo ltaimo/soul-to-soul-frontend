@@ -197,6 +197,30 @@ export const Reports = () => {
         }));
       }
 
+      if (reportType === 'Fund Requests') {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/fund-requests`, fetchOptions);
+        if (res.status === 401) return logout();
+        const raw = await res.json();
+        data = raw.map((request) => ({
+          'Request Number': request.requestNumber,
+          'Created Date': new Date(request.createdAt).toISOString().split('T')[0],
+          'Requester': request.requesterName,
+          'Role': request.requesterRole || '',
+          'Department': request.department || '',
+          'Category': request.category,
+          'Title': request.title,
+          'Amount': formatCurrency(request.amount, settings),
+          'Needed By': request.neededBy ? new Date(request.neededBy).toISOString().split('T')[0] : '',
+          'Priority': request.priority,
+          'Payment Method': request.paymentMethod || '',
+          'Payee': request.payeeName || '',
+          'Payee Phone': request.payeePhone || '',
+          'Status': request.status,
+          'Reviewed By': request.reviewedByName || '',
+          'Review Notes': request.reviewNotes || '',
+        }));
+      }
+
       if (reportType === 'Audit Logs') {
         const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/audit-logs?take=500`, fetchOptions);
         if (res.status === 401) return logout();
@@ -271,6 +295,11 @@ export const Reports = () => {
 
             <button className="btn" onClick={() => downloadExcel('Sellers & Resellers')} disabled={downloading} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem' }}>
               <span style={{ fontWeight: 600 }}>Sellers, Resellers & Commissions Report</span>
+              <Download size={18} />
+            </button>
+
+            <button className="btn" onClick={() => downloadExcel('Fund Requests')} disabled={downloading} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem' }}>
+              <span style={{ fontWeight: 600 }}>Fund Requests Approval Report</span>
               <Download size={18} />
             </button>
 
