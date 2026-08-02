@@ -39,7 +39,10 @@ const PageLoading = () => (
 function AppContent() {
   const { user } = useContext(AuthContext);
   const { language } = useContext(LanguageContext);
-  const isPublicStore = window.location.pathname.startsWith('/shop');
+  const publicStoreHosts = new Set(['soul2soulmz.com', 'www.soul2soulmz.com']);
+  const isPublicStore =
+    window.location.pathname.startsWith('/shop') ||
+    (publicStoreHosts.has(window.location.hostname) && window.location.pathname === '/');
   const [activePage, setActivePage] = useState('Dashboard');
   const [activeFilter, setActiveFilter] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
