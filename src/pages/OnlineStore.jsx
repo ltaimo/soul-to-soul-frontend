@@ -333,7 +333,7 @@ export const OnlineStore = () => {
             <input required value={checkout.customerName} onChange={(event) => updateCheckout('customerName', event.target.value)} placeholder="Nome completo" />
             <input required value={checkout.customerPhone} onChange={(event) => updateCheckout('customerPhone', event.target.value)} placeholder="Telefone / WhatsApp" />
             <input type="email" value={checkout.customerEmail} onChange={(event) => updateCheckout('customerEmail', event.target.value)} placeholder="Email opcional" />
-            <input value={checkout.customerCode} onChange={(event) => updateCheckout('customerCode', event.target.value)} placeholder="Codigo de fidelizacao opcional" />
+            <input value={checkout.customerCode} onChange={(event) => updateCheckout('customerCode', event.target.value)} placeholder="Codigo de fidelizacao, se tiver" />
             <textarea value={checkout.deliveryAddress} onChange={(event) => updateCheckout('deliveryAddress', event.target.value)} placeholder="Endereco de entrega ou ponto de recolha" />
             <div className="store-payment-options">
               {paymentOptions.map((option) => (
