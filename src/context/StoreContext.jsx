@@ -11,6 +11,7 @@ export const StoreProvider = ({ children }) => {
   const [warehouseStock, setWarehouseStock] = useState([]);
   const [stockTransfers, setStockTransfers] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [sales, setSales] = useState([]);
   const [commercialPartners, setCommercialPartners] = useState([]);
   const [fundRequests, setFundRequests] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -59,6 +60,7 @@ export const StoreProvider = ({ children }) => {
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
   const canAccessHr = ['admin', 'manager'].includes(user?.role);
   const canAccessAudit = ['admin', 'manager'].includes(user?.role);
+  const canAccessSales = ['admin', 'manager', 'cashier', 'salesperson', 'staff'].includes(user?.role);
 
   const fetchWithAuth = useCallback(async (url, options = {}) => {
     const headers = { ...options.headers };
@@ -106,6 +108,13 @@ export const StoreProvider = ({ children }) => {
       setSettings(stngs);
       setFundRequests(funds);
 
+      if (canAccessSales) {
+        const salesRes = await fetchWithAuth(`${apiBaseUrl}/api/sales`);
+        setSales(await salesRes.json());
+      } else {
+        setSales([]);
+      }
+
       if (canAccessHr) {
         const [employeesRes, paymentsRes, attendanceRes, summaryRes, payrollRes, goalsRes] = await Promise.all([
           fetchWithAuth(`${apiBaseUrl}/api/hr/employees`),
@@ -141,7 +150,7 @@ export const StoreProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [apiBaseUrl, canAccessAudit, canAccessHr, fetchWithAuth]);
+  }, [apiBaseUrl, canAccessAudit, canAccessHr, canAccessSales, fetchWithAuth]);
 
   useEffect(() => {
     fetchItems();
@@ -159,6 +168,7 @@ export const StoreProvider = ({ children }) => {
     fundRequests,
     warehouseStock,
     stockTransfers,
+    sales,
     hrPayments,
     workGoals,
   });
@@ -798,6 +808,7 @@ export const StoreProvider = ({ children }) => {
       warehouseStock,
       stockTransfers,
       customers,
+      sales,
       commercialPartners,
       fundRequests,
       notifications,

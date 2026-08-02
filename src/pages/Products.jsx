@@ -20,6 +20,8 @@ const initialFormData = {
   brand: '',
   description: '',
   barcode: '',
+  imageUrl: '',
+  storeFeatured: false,
   supplierId: ''
 };
 
@@ -73,6 +75,8 @@ export const Products = () => {
       brand: prod.brand || '',
       description: prod.description || '',
       barcode: prod.barcode || '',
+      imageUrl: prod.imageUrl || '',
+      storeFeatured: Boolean(prod.storeFeatured),
       supplierId: prod.supplierId || ''
     });
     setEditId(prod.id);
@@ -163,6 +167,7 @@ export const Products = () => {
                 <th>Selling Price</th>
                 <th>Margin</th>
                 <th>Loyalty</th>
+                <th>Store</th>
                 <th>Status</th>
                 {canManageProducts && <th>Actions</th>}
               </tr>
@@ -190,6 +195,10 @@ export const Products = () => {
                     <td>
                       <span className="table-muted">Earn {item.loyaltyPointsEarned || 0}</span>
                       <span className="table-muted">Redeem {item.redemptionPointsCost || 0}</span>
+                    </td>
+                    <td>
+                      <span className="table-muted">{item.imageUrl ? 'Image ready' : 'No image'}</span>
+                      {item.storeFeatured && <span className="badge badge-success">Featured</span>}
                     </td>
                     <td>
                       <span className={item.status === 'Active' ? 'badge badge-success' : 'badge badge-danger'}>
@@ -316,6 +325,17 @@ export const Products = () => {
                 <div className="form-group">
                   <label>UPC / Barcode</label>
                   <input type="text" className="form-input" value={formData.barcode} onChange={e => setFormData({...formData, barcode: e.target.value})} />
+                </div>
+                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                  <label>Store Image URL</label>
+                  <input type="url" className="form-input" value={formData.imageUrl} onChange={e => setFormData({...formData, imageUrl: e.target.value})} placeholder="https://..." />
+                  <small style={{ color: 'var(--color-charcoal-light)', display: 'block', marginTop: '4px' }}>Use product photos, label images or hosted assets. If empty, the online store uses a branded placeholder.</small>
+                </div>
+                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="checkbox-line">
+                    <input type="checkbox" checked={formData.storeFeatured} onChange={e => setFormData({...formData, storeFeatured: e.target.checked})} />
+                    Highlight this product in the online store
+                  </label>
                 </div>
                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
                   <label>Description</label>

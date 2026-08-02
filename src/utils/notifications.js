@@ -3,6 +3,7 @@ export const buildNotifications = ({
   fundRequests = [],
   warehouseStock = [],
   stockTransfers = [],
+  sales = [],
   hrPayments = [],
   workGoals = [],
 }) => {
@@ -10,7 +11,24 @@ export const buildNotifications = ({
   const canApprove = ['admin', 'manager'].includes(role);
   const canManageStock = ['admin', 'manager', 'stock_manager', 'production_manager'].includes(role);
   const canManageHr = ['admin', 'manager'].includes(role);
+  const canManageOrders = ['admin', 'manager', 'cashier', 'salesperson', 'staff'].includes(role);
   const notifications = [];
+
+  if (canManageOrders) {
+    sales
+      .filter((sale) => sale.channel === 'Online' && ['Pending Payment', 'Pending', 'In Transit', 'Pickup'].includes(sale.fulfillmentStatus))
+      .slice(0, 20)
+      .forEach((sale) => notifications.push({
+        id: `online-order-${sale.id}`,
+        type: 'online-order',
+        severity: sale.paymentStatus === 'Paid' ? 'info' : 'warning',
+        title: 'Nova encomenda online',
+        message: `${sale.orderReference || `Venda #${sale.id}`} de ${sale.customerName || 'cliente'} aguarda confirmacao (${sale.paymentStatus || 'Pending'}).`,
+        page: 'Sales / POS',
+        filter: 'online_orders',
+        createdAt: sale.date,
+      }));
+  }
 
   fundRequests.forEach((request) => {
     if (canApprove && request.status === 'Pending') {
