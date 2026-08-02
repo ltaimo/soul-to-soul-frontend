@@ -24,6 +24,7 @@ const AuditLogs = lazy(() => import('./pages/AuditLogs').then((module) => ({ def
 const Settings = lazy(() => import('./pages/Settings').then((module) => ({ default: module.Settings })));
 const Users = lazy(() => import('./pages/Users').then((module) => ({ default: module.Users })));
 const HelpCenter = lazy(() => import('./pages/HelpCenter').then((module) => ({ default: module.HelpCenter })));
+const OnlineStore = lazy(() => import('./pages/OnlineStore').then((module) => ({ default: module.OnlineStore })));
 
 const PageLoading = () => (
   <div className="card page-loading" role="status" aria-live="polite">
@@ -38,6 +39,7 @@ const PageLoading = () => (
 function AppContent() {
   const { user } = useContext(AuthContext);
   const { language } = useContext(LanguageContext);
+  const isPublicStore = window.location.pathname.startsWith('/shop');
   const [activePage, setActivePage] = useState('Dashboard');
   const [activeFilter, setActiveFilter] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -115,6 +117,14 @@ function AppContent() {
         );
     }
   };
+
+  if (isPublicStore) {
+    return (
+      <Suspense fallback={<PageLoading />}>
+        <OnlineStore />
+      </Suspense>
+    );
+  }
 
   if (!user) {
     return <Login />;
