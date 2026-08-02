@@ -75,6 +75,18 @@ export const StoreProvider = ({ children }) => {
     return res;
   }, [token, logout]);
 
+  const fetchSales = useCallback(async () => {
+    if (!canAccessSales) {
+      setSales([]);
+      return [];
+    }
+
+    const salesRes = await fetchWithAuth(`${apiBaseUrl}/api/sales`);
+    const saleRows = await salesRes.json();
+    setSales(saleRows);
+    return saleRows;
+  }, [apiBaseUrl, canAccessSales, fetchWithAuth]);
+
   const fetchItems = useCallback(async () => {
     try {
       const [prodRes, suppRes, warehousesRes, warehouseStockRes, transfersRes, customersRes, commercialPartnersRes, settingsRes, fundRequestsRes] = await Promise.all([
@@ -108,12 +120,7 @@ export const StoreProvider = ({ children }) => {
       setSettings(stngs);
       setFundRequests(funds);
 
-      if (canAccessSales) {
-        const salesRes = await fetchWithAuth(`${apiBaseUrl}/api/sales`);
-        setSales(await salesRes.json());
-      } else {
-        setSales([]);
-      }
+      await fetchSales();
 
       if (canAccessHr) {
         const [employeesRes, paymentsRes, attendanceRes, summaryRes, payrollRes, goalsRes] = await Promise.all([
@@ -150,11 +157,19 @@ export const StoreProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [apiBaseUrl, canAccessAudit, canAccessHr, canAccessSales, fetchWithAuth]);
+  }, [apiBaseUrl, canAccessAudit, canAccessHr, fetchSales, fetchWithAuth]);
 
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
+
+  useEffect(() => {
+    if (!user || !canAccessSales) return undefined;
+    const intervalId = window.setInterval(() => {
+      fetchSales().catch((error) => console.error('Failed to refresh sales notifications', error));
+    }, 30000);
+    return () => window.clearInterval(intervalId);
+  }, [canAccessSales, fetchSales, user]);
 
   const totalInventoryValue = products.reduce((acc, p) => acc + (p.costPrice * p.stock), 0);
   
@@ -862,7 +877,8 @@ export const StoreProvider = ({ children }) => {
       generateSecurityCode,
       executeCriticalReset,
       fetchAuditLogs,
-      refreshData: fetchItems
+      refreshData: fetchItems,
+      refreshSales: fetchSales
     }}>
       {children}
     </StoreContext.Provider>

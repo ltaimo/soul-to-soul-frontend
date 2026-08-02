@@ -261,6 +261,11 @@ a {
   font-size: 0.95rem;
 }
 
+.muted-text {
+  color: var(--color-charcoal-light);
+  font-size: 0.88rem;
+}
+
 .page-header {
   display: flex;
   align-items: flex-start;
@@ -3094,6 +3099,10 @@ tr:hover {
   justify-content: center;
 }
 
+.store-mobile-checkout-bar {
+  display: none;
+}
+
 .store-empty-products {
   grid-column: 1 / -1;
   display: grid;
@@ -3123,6 +3132,55 @@ tr:hover {
   .app-layout {
     min-height: 100dvh;
     height: 100dvh;
+  }
+
+  .store-shell {
+    padding-bottom: 6.5rem;
+  }
+
+  .store-mobile-checkout-bar {
+    position: fixed;
+    right: 0.75rem;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    left: 0.75rem;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.85rem;
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 0.75rem;
+    background: rgba(251, 247, 239, 0.96);
+    border: 1px solid rgba(107, 142, 126, 0.28);
+    border-radius: 999px;
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(14px);
+  }
+
+  .store-mobile-checkout-bar span,
+  .store-mobile-checkout-bar strong {
+    display: block;
+  }
+
+  .store-mobile-checkout-bar span {
+    color: var(--color-charcoal-light);
+    font-size: 0.76rem;
+  }
+
+  .store-mobile-checkout-bar strong {
+    color: var(--color-primary-deep);
+    font-size: 1rem;
+  }
+
+  .store-mobile-checkout-bar .btn {
+    min-height: 42px;
+    padding: 0.65rem 1rem;
+    white-space: nowrap;
+  }
+
+  .store-checkout {
+    scroll-margin-top: 1rem;
   }
 
   .app-sidebar {

@@ -328,7 +328,7 @@ export const OnlineStore = () => {
             {!cartLines.length && <div className="empty-cart">O carrinho esta vazio. Escolha um produto para comecar.</div>}
           </div>
 
-          <form className="store-checkout" onSubmit={submitOrder}>
+          <form className="store-checkout" id="store-checkout" onSubmit={submitOrder}>
             <h3>Dados da encomenda</h3>
             <input required value={checkout.customerName} onChange={(event) => updateCheckout('customerName', event.target.value)} placeholder="Nome completo" />
             <input required value={checkout.customerPhone} onChange={(event) => updateCheckout('customerPhone', event.target.value)} placeholder="Telefone / WhatsApp" />
@@ -360,6 +360,16 @@ export const OnlineStore = () => {
           </form>
         </aside>
       </section>
+
+      {cartLines.length > 0 && (
+        <div className="store-mobile-checkout-bar" aria-label="Resumo do carrinho">
+          <div>
+            <span>{totals.units} unidades</span>
+            <strong>{formatCurrency(totals.amount, settings)}</strong>
+          </div>
+          <a className="btn btn-primary" href="#store-checkout">Finalizar</a>
+        </div>
+      )}
     </main>
   );
 };

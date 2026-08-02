@@ -19,8 +19,8 @@ import { formatCurrency } from '../utils/formatters';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
-export const SalesInsights = () => {
-  const { products, customers, commercialPartners, warehouses, warehouseStock, settings, refreshData } = useContext(StoreContext);
+export const SalesInsights = ({ activeFilter }) => {
+  const { products, customers, commercialPartners, warehouses, warehouseStock, sales, settings, refreshData } = useContext(StoreContext);
   const { token, logout, user } = useContext(AuthContext);
   const { language, t } = useContext(LanguageContext);
   const [salesRecord, setSalesRecord] = useState([]);
@@ -73,6 +73,12 @@ export const SalesInsights = () => {
   useEffect(() => {
     fetchSales();
   }, [fetchSales]);
+
+  useEffect(() => {
+    if (Array.isArray(sales)) {
+      setSalesRecord(sales);
+    }
+  }, [sales]);
 
   const saleableProducts = useMemo(() => {
     return products
@@ -142,6 +148,13 @@ export const SalesInsights = () => {
   const changeGiven = Math.max(0, effectivePaidAmount - saleRevenue);
   const hasPaymentIssue = paymentMethod === 'Cash' && cart.length > 0 && paidAmount < saleRevenue;
   const hasPointsIssue = payingWithPoints && (!selectedCustomer || totals.redemptionPointsCost <= 0 || (selectedCustomer.loyaltyPoints || 0) < totals.redemptionPointsCost);
+
+  const displayedSales = useMemo(() => {
+    if (activeFilter === 'online_orders') {
+      return salesRecord.filter((sale) => sale.channel === 'Online');
+    }
+    return salesRecord;
+  }, [activeFilter, salesRecord]);
 
   const handleCommercialPartnerChange = (partnerId) => {
     setSelectedCommercialPartnerId(partnerId);
@@ -631,8 +644,11 @@ export const SalesInsights = () => {
 
       <section className="card" style={{ marginTop: '2rem' }}>
         <div className="section-heading">
-          <h3>{t.recentSales}</h3>
-          <span>{salesRecord.length} {t.records}</span>
+          <div>
+            <h3>{activeFilter === 'online_orders' ? 'Encomendas online' : t.recentSales}</h3>
+            {activeFilter === 'online_orders' && <p className="muted-text">A mostrar apenas pedidos feitos na loja online.</p>}
+          </div>
+          <span>{displayedSales.length} {t.records}</span>
         </div>
         <div className="table-container">
           <table>
@@ -654,10 +670,10 @@ export const SalesInsights = () => {
               </tr>
             </thead>
             <tbody>
-              {salesRecord.length === 0 ? (
+              {displayedSales.length === 0 ? (
                 <tr><td colSpan="13" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-charcoal-light)' }}>No sales logged yet.</td></tr>
               ) : (
-                salesRecord.map((sale) => {
+                displayedSales.map((sale) => {
                   const saleDate = new Date(sale.date);
                   const saleMargin = sale.totalRevenue > 0 ? ((sale.totalRevenue - sale.totalCogs) / sale.totalRevenue) * 100 : 0;
                   const units = sale.items?.reduce((acc, item) => acc + item.quantity, 0) || 0;
