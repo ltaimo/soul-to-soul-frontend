@@ -5,6 +5,7 @@ import { AuthProvider, AuthContext } from './context/AuthContext';
 import { LanguageProvider, LanguageContext } from './context/LanguageContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Login } from './pages/Login';
+import { ForcePasswordChange } from './pages/ForcePasswordChange';
 import { canAccessPage, getRoleProfile } from './config/roles';
 
 const Dashboard = lazy(() => import('./pages/Dashboard').then((module) => ({ default: module.Dashboard })));
@@ -131,6 +132,10 @@ function AppContent() {
 
   if (!user) {
     return <Login />;
+  }
+
+  if (user.mustChangePassword) {
+    return <ForcePasswordChange />;
   }
 
   return (

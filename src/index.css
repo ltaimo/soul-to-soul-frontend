@@ -918,6 +918,48 @@ tr:hover {
   margin-top: 1.5rem;
 }
 
+.password-gate-shell {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: clamp(1rem, 4vw, 2rem);
+  background:
+    radial-gradient(circle at top left, rgba(201, 135, 30, 0.18), transparent 28rem),
+    linear-gradient(135deg, rgba(251, 247, 239, 0.95), rgba(232, 220, 203, 0.68));
+}
+
+.password-gate-card {
+  width: min(100%, 520px);
+  padding: clamp(1.25rem, 4vw, 2rem);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.password-gate-card img {
+  width: 132px;
+  margin-bottom: 1rem;
+}
+
+.password-gate-card h1 {
+  margin: 0.5rem 0;
+  color: var(--color-primary-deep);
+  font-size: clamp(1.55rem, 6vw, 2.25rem);
+  line-height: 1.08;
+}
+
+.password-gate-card p {
+  color: var(--color-charcoal-light);
+  line-height: 1.55;
+}
+
+.password-gate-form {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1.25rem;
+}
+
 @media (max-width: 920px) {
   .login-shell {
     padding: 1.5rem;
@@ -1172,6 +1214,44 @@ tr:hover {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: rgba(107, 142, 126, 0.07);
+}
+
+.product-image-helper {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  gap: 0.85rem;
+  align-items: center;
+  margin-top: 0.65rem;
+  padding: 0.75rem;
+  background: rgba(107, 142, 126, 0.08);
+  border: 1px solid rgba(107, 142, 126, 0.18);
+  border-radius: var(--radius-sm);
+}
+
+.product-image-helper strong,
+.product-image-helper span {
+  display: block;
+}
+
+.product-image-helper strong {
+  color: var(--color-primary-deep);
+  font-size: 0.9rem;
+}
+
+.product-image-helper span {
+  margin-top: 0.2rem;
+  color: var(--color-charcoal-light);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.product-image-helper img {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  background: var(--color-cream);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
 .pos-grid {
@@ -3339,6 +3419,15 @@ tr:hover {
     flex-direction: column;
   }
 
+  .product-image-helper {
+    grid-template-columns: 1fr;
+  }
+
+  .product-image-helper img {
+    width: 100%;
+    height: min(220px, 52vw);
+  }
+
   .toolbar-select {
     width: 100%;
   }
@@ -3620,6 +3709,15 @@ tr:hover {
     width: 100%;
     min-height: 46px;
     padding-inline: 0.95rem;
+  }
+
+  .password-gate-shell {
+    align-items: start;
+    padding: 0.75rem;
+  }
+
+  .password-gate-card {
+    border-radius: var(--radius-md);
   }
 
   .row-actions {

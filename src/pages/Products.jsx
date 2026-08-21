@@ -3,6 +3,7 @@ import { StoreContext } from '../context/StoreContext';
 import { AuthContext } from '../context/AuthContext';
 import { Plus, X, Edit, Trash2 } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
+import { downloadCsv } from '../utils/csv';
 
 const initialFormData = {
   name: '',
@@ -92,6 +93,31 @@ export const Products = () => {
     }
   };
 
+  const exportProducts = () => {
+    const rows = filteredProducts.map((product) => ({
+      id: product.id,
+      sku: product.sku,
+      name: product.name,
+      category: product.category,
+      type: product.type,
+      unit: product.unit,
+      brand: product.brand || '',
+      supplier: suppliers.find((supplier) => supplier.id === product.supplierId)?.name || '',
+      costPrice: product.costPrice,
+      sellingPrice: product.sellingPrice,
+      stock: product.stock,
+      minStock: product.minStock,
+      loyaltyPointsEarned: product.loyaltyPointsEarned || 0,
+      redemptionPointsCost: product.redemptionPointsCost || 0,
+      barcode: product.barcode || '',
+      description: product.description || '',
+      imageUrl: product.imageUrl || '',
+      storeFeatured: product.storeFeatured ? 'yes' : 'no',
+      status: product.status,
+    }));
+    downloadCsv(rows, `Soul2Soul_Products_${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -128,12 +154,17 @@ export const Products = () => {
     <div>
       <div className="page-header">
         <h1 className="page-title" style={{ marginBottom: 0 }}>Product Catalog</h1>
-        {canManageProducts && (
-          <button className="btn btn-primary" onClick={openCreate}>
-            <Plus size={18} />
-            New Product
+        <div className="page-actions">
+          <button className="btn btn-secondary" type="button" onClick={exportProducts} disabled={filteredProducts.length === 0}>
+            Export Products
           </button>
-        )}
+          {canManageProducts && (
+            <button className="btn btn-primary" onClick={openCreate}>
+              <Plus size={18} />
+              New Product
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="card">
@@ -329,7 +360,16 @@ export const Products = () => {
                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
                   <label>Store Image URL</label>
                   <input type="url" className="form-input" value={formData.imageUrl} onChange={e => setFormData({...formData, imageUrl: e.target.value})} placeholder="https://..." />
-                  <small style={{ color: 'var(--color-charcoal-light)', display: 'block', marginTop: '4px' }}>Use product photos, label images or hosted assets. If empty, the online store uses a branded placeholder.</small>
+                  <small style={{ color: 'var(--color-charcoal-light)', display: 'block', marginTop: '4px' }}>
+                    To show a product image on the public site, paste a public image link here and save. If empty, the online store uses a branded placeholder.
+                  </small>
+                  <div className="product-image-helper">
+                    <div>
+                      <strong>Image source options</strong>
+                      <span>Use a direct public URL ending in .jpg, .png, .webp, or a hosted asset/CDN link. Product photos should be square when possible.</span>
+                    </div>
+                    <img src={formData.imageUrl || '/logo.png'} alt="Product preview" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = '/logo.png'; }} />
+                  </div>
                 </div>
                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
                   <label className="checkbox-line">
