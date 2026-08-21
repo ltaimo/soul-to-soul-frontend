@@ -186,8 +186,8 @@ export const Products = () => {
           </select>
         </div>
 
-        <div className="table-container">
-          <table>
+        <div className="table-container product-table-container has-sticky-actions">
+          <table className="product-table">
             <thead>
               <tr>
                 <th>SKU</th>
