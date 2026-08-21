@@ -228,8 +228,23 @@ export const Products = () => {
                       <span className="table-muted">Redeem {item.redemptionPointsCost || 0}</span>
                     </td>
                     <td>
-                      <span className="table-muted">{item.imageUrl ? 'Image ready' : 'No image'}</span>
-                      {item.storeFeatured && <span className="badge badge-success">Featured</span>}
+                      {canManageProducts ? (
+                        <button
+                          className={`product-store-edit-button ${item.imageUrl ? 'has-image' : 'missing-image'}`}
+                          type="button"
+                          onClick={() => openEdit(item)}
+                          title={item.imageUrl ? 'Edit or replace product image' : 'Add product image'}
+                        >
+                          <span>{item.imageUrl ? 'Image ready' : 'No image'}</span>
+                          <small>{item.imageUrl ? 'Click to replace' : 'Click to add'}</small>
+                          {item.storeFeatured && <strong>Featured</strong>}
+                        </button>
+                      ) : (
+                        <>
+                          <span className="table-muted">{item.imageUrl ? 'Image ready' : 'No image'}</span>
+                          {item.storeFeatured && <span className="badge badge-success">Featured</span>}
+                        </>
+                      )}
                     </td>
                     <td>
                       <span className={item.status === 'Active' ? 'badge badge-success' : 'badge badge-danger'}>
@@ -238,13 +253,13 @@ export const Products = () => {
                     </td>
                     {canManageProducts && (
                       <td>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                           <button className="btn btn-ghost" style={{ padding: '0.25rem 0.5rem' }} onClick={() => openEdit(item)}>
-                             <Edit size={16} />
+                        <div className="row-actions compact-actions">
+                           <button className="btn btn-secondary compact-btn" type="button" onClick={() => openEdit(item)}>
+                             <Edit size={16} /> Edit
                            </button>
                            {item.status === 'Active' && (
-                             <button className="btn btn-ghost" style={{ padding: '0.25rem 0.5rem', color: 'var(--color-danger)' }} onClick={() => handleDeactivate(item.id, item.status)}>
-                               <Trash2 size={16} />
+                             <button className="btn btn-ghost compact-btn danger-compact-btn" type="button" onClick={() => handleDeactivate(item.id, item.status)}>
+                               <Trash2 size={16} /> Disable
                              </button>
                            )}
                         </div>

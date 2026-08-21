@@ -1254,6 +1254,67 @@ tr:hover {
   border-radius: var(--radius-md);
 }
 
+.product-store-edit-button {
+  display: grid;
+  gap: 0.16rem;
+  min-width: 128px;
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+  color: var(--color-charcoal);
+  background: rgba(107, 142, 126, 0.08);
+  border: 1px solid rgba(107, 142, 126, 0.2);
+  border-radius: var(--radius-sm);
+}
+
+.product-store-edit-button:hover {
+  border-color: var(--color-primary);
+  background: rgba(107, 142, 126, 0.14);
+  transform: translateY(-1px);
+}
+
+.product-store-edit-button span {
+  color: var(--color-primary-deep);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.product-store-edit-button small {
+  color: var(--color-charcoal-light);
+  font-size: 0.72rem;
+}
+
+.product-store-edit-button strong {
+  width: max-content;
+  margin-top: 0.1rem;
+  padding: 0.18rem 0.45rem;
+  color: var(--color-success);
+  background: rgba(92, 184, 92, 0.12);
+  border-radius: var(--radius-full);
+  font-size: 0.68rem;
+}
+
+.product-store-edit-button.missing-image {
+  color: var(--color-warning);
+  background: rgba(240, 173, 78, 0.12);
+  border-color: rgba(240, 173, 78, 0.28);
+}
+
+.compact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.compact-btn {
+  min-height: 36px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.78rem;
+}
+
+.danger-compact-btn {
+  color: var(--color-danger);
+}
+
 .pos-grid {
   display: grid;
   grid-template-columns: minmax(340px, 0.9fr) minmax(460px, 1.1fr);
