@@ -55,9 +55,11 @@ export const Quotations = () => {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
+  const [customerNuit, setCustomerNuit] = useState('');
   const [partnerId, setPartnerId] = useState('');
   const [validDays, setValidDays] = useState(7);
   const [discount, setDiscount] = useState(0);
+  const [includeVat, setIncludeVat] = useState(false);
   const [notes, setNotes] = useState('Entrega sujeita a confirmação de stock. Pagamento conforme acordo com o cliente.');
   const [items, setItems] = useState([]);
   const [status, setStatus] = useState('Rascunho');
@@ -112,8 +114,11 @@ export const Quotations = () => {
     { subtotal: 0, cost: 0, units: 0 }
   );
   const discountAmount = Math.min(totals.subtotal, Number(discount) || 0);
-  const total = Math.max(0, totals.subtotal - discountAmount);
-  const margin = total > 0 ? ((total - totals.cost) / total) * 100 : 0;
+  const taxableTotal = Math.max(0, totals.subtotal - discountAmount);
+  const vatRate = 0.16;
+  const vatAmount = includeVat ? taxableTotal * vatRate : 0;
+  const total = taxableTotal + vatAmount;
+  const margin = taxableTotal > 0 ? ((taxableTotal - totals.cost) / taxableTotal) * 100 : 0;
 
   const addProduct = (product) => {
     setItems((current) => {
@@ -144,6 +149,7 @@ export const Quotations = () => {
       setCustomerName(customer.fullName);
       setCustomerPhone(customer.phone || '');
       setCustomerEmail(customer.email || '');
+      setCustomerNuit('');
     }
   };
 
@@ -156,11 +162,16 @@ export const Quotations = () => {
     customerName: selectedCustomer?.fullName || customerName || 'Cliente de Balcão',
     customerPhone: selectedCustomer?.phone || customerPhone,
     customerEmail: selectedCustomer?.email || customerEmail,
+    customerNuit,
     partnerName: selectedPartner?.name || '',
     sellerName: user?.fullName || user?.email || '',
     notes,
     discount: discountAmount,
     subtotal: totals.subtotal,
+    taxableTotal,
+    includeVat,
+    vatRate,
+    vatAmount,
     total,
     margin,
     items: quoteLines.map((line) => ({
@@ -183,7 +194,14 @@ export const Quotations = () => {
     return quote;
   };
 
-  const printQuote = (quote) => {
+  const printQuote = (sourceQuote) => {
+    const quote = {
+      ...sourceQuote,
+      customerNuit: sourceQuote.customerNuit || '',
+      taxableTotal: sourceQuote.taxableTotal ?? Math.max(0, (sourceQuote.subtotal || 0) - (sourceQuote.discount || 0)),
+      includeVat: Boolean(sourceQuote.includeVat),
+      vatAmount: sourceQuote.vatAmount || 0,
+    };
     const expiry = new Date(quote.createdAt);
     expiry.setDate(expiry.getDate() + quote.validDays);
     const logoUrl = `${window.location.origin}/logo.png`;
@@ -203,15 +221,22 @@ export const Quotations = () => {
           <title>${quote.number}</title>
           <style>
             body { font-family: Arial, sans-serif; color: #2E2E2E; padding: 32px; }
-            header { display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 2px solid #6B8E7E; padding-bottom: 18px; }
+            header { display: grid; grid-template-columns: 210px 1fr; gap: 24px; align-items: stretch; border-bottom: 2px solid #6B8E7E; padding-bottom: 18px; }
             .brand { width: 190px; padding: 12px; background: #fff; border: 1px solid #E8E5DF; border-radius: 12px; text-align: center; }
             .brand img { width: 148px; margin: 0 auto 8px; }
             .brand strong, .brand span { display: block; }
             .brand strong { color: #3F5F51; font-size: 14px; }
             .brand span { color: #5A5A5A; font-size: 11px; line-height: 1.35; margin-top: 3px; }
+            .document-head { display: grid; grid-template-columns: 1fr 1.15fr; gap: 14px; }
             h1 { margin: 0; color: #3F5F51; font-size: 28px; }
             .muted, td span { color: #5A5A5A; font-size: 12px; display: block; margin-top: 3px; }
-            .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 24px 0; }
+            .document-card { border: 1px solid #E8E5DF; border-radius: 12px; padding: 14px; background: #fff; }
+            .document-card h2 { margin: 0 0 10px; color: #3F5F51; font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; }
+            .info-grid { display: grid; gap: 8px; }
+            .info-line { display: grid; grid-template-columns: 78px 1fr; gap: 8px; font-size: 13px; }
+            .info-line span { color: #5A5A5A; }
+            .info-line strong { color: #2E2E2E; }
+            .meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 24px 0; }
             .box { border: 1px solid #E8E5DF; border-radius: 10px; padding: 12px; }
             .box span { color: #5A5A5A; font-size: 12px; text-transform: uppercase; }
             .box strong { display: block; margin-top: 6px; }
@@ -242,15 +267,30 @@ export const Quotations = () => {
               <span>${companyInfo.email}</span>
               <span>${companyInfo.phone}</span>
             </div>
-            <div>
-              <h1>Cotação ${quote.number}</h1>
-              <p class="muted">Emitida em ${new Date(quote.createdAt).toLocaleDateString()} · válida até ${expiry.toLocaleDateString()}</p>
+            <div class="document-head">
+              <div class="document-card">
+                <h1>Cotação</h1>
+                <div class="info-grid">
+                  <div class="info-line"><span>Número</span><strong>${quote.number}</strong></div>
+                  <div class="info-line"><span>Emitida</span><strong>${new Date(quote.createdAt).toLocaleDateString()}</strong></div>
+                  <div class="info-line"><span>Validade</span><strong>${expiry.toLocaleDateString()}</strong></div>
+                  <div class="info-line"><span>Estado</span><strong>${quote.status}</strong></div>
+                </div>
+              </div>
+              <div class="document-card">
+                <h2>Cliente</h2>
+                <div class="info-grid">
+                  <div class="info-line"><span>Nome</span><strong>${quote.customerName}</strong></div>
+                  <div class="info-line"><span>NUIT</span><strong>${quote.customerNuit || '-'}</strong></div>
+                  <div class="info-line"><span>Contacto</span><strong>${quote.customerPhone || '-'}</strong></div>
+                  <div class="info-line"><span>Email</span><strong>${quote.customerEmail || '-'}</strong></div>
+                </div>
+              </div>
             </div>
           </header>
           <section class="meta">
-            <div class="box"><span>Cliente</span><strong>${quote.customerName}</strong><small>${quote.customerPhone || quote.customerEmail || ''}</small></div>
             <div class="box"><span>Comercial</span><strong>${quote.partnerName || quote.sellerName || 'Soul2Soul'}</strong><small>${quote.status}</small></div>
-            <div class="box"><span>Total</span><strong>${formatCurrency(quote.total, settings)}</strong><small>Margem prevista ${quote.margin.toFixed(1)}%</small></div>
+            <div class="box"><span>Total da cotação</span><strong>${formatCurrency(quote.total, settings)}</strong><small>${quote.includeVat ? 'Inclui IVA de 16%' : 'IVA não aplicado'}</small></div>
           </section>
           <table>
             <thead><tr><th>Produto</th><th>Qtd.</th><th>Preço</th><th>Total</th></tr></thead>
@@ -259,6 +299,8 @@ export const Quotations = () => {
           <section class="totals">
             <div><span>Subtotal</span><strong>${formatCurrency(quote.subtotal, settings)}</strong></div>
             <div><span>Desconto</span><strong>-${formatCurrency(quote.discount, settings)}</strong></div>
+            <div><span>Base tributável</span><strong>${formatCurrency(quote.taxableTotal, settings)}</strong></div>
+            <div><span>IVA 16%</span><strong>${quote.includeVat ? formatCurrency(quote.vatAmount, settings) : 'Não aplicado'}</strong></div>
             <div class="grand"><span>Total</span><strong>${formatCurrency(quote.total, settings)}</strong></div>
           </section>
           <section class="notes"><strong>Notas e condições</strong><p>${quote.notes || 'Sem notas adicionais.'}</p></section>
@@ -365,6 +407,10 @@ export const Quotations = () => {
               <input className="form-input" type="email" value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} disabled={!!selectedCustomer} />
             </div>
             <div className="form-group">
+              <label className="form-label">NUIT do cliente</label>
+              <input className="form-input" value={customerNuit} onChange={(event) => setCustomerNuit(event.target.value)} placeholder="Opcional" />
+            </div>
+            <div className="form-group">
               <label className="form-label">Validade</label>
               <select className="form-input" value={validDays} onChange={(event) => setValidDays(event.target.value)}>
                 <option value="7">7 dias</option>
@@ -426,7 +472,15 @@ export const Quotations = () => {
               <label className="form-label">Desconto comercial</label>
               <input className="form-input" type="number" min="0" step="0.01" value={discount} onChange={(event) => setDiscount(event.target.value)} />
             </div>
+            <label className="quotation-tax-toggle">
+              <input type="checkbox" checked={includeVat} onChange={(event) => setIncludeVat(event.target.checked)} />
+              <span>
+                <strong>Aplicar IVA 16%</strong>
+                <small>Opcional para cotações que exigem imposto discriminado.</small>
+              </span>
+            </label>
             <div className="quotation-total-row"><span>Margem prevista</span><strong>{margin.toFixed(1)}%</strong></div>
+            <div className="quotation-total-row"><span>IVA 16%</span><strong>{includeVat ? formatCurrency(vatAmount, settings) : 'Não aplicado'}</strong></div>
             <div className="quotation-grand-total"><span>Total</span><strong>{formatCurrency(total, settings)}</strong></div>
             <div className="form-group">
               <label className="form-label">Notas e condições</label>

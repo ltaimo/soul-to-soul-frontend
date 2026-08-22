@@ -3505,6 +3505,42 @@ tr:hover {
   border-bottom: 1px solid var(--color-border);
 }
 
+.quotation-tax-toggle {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.85rem;
+  margin-bottom: 0.85rem;
+  background: rgba(107, 142, 126, 0.08);
+  border: 1px solid rgba(107, 142, 126, 0.18);
+  border-radius: var(--radius-sm);
+}
+
+.quotation-tax-toggle input {
+  width: 18px;
+  height: 18px;
+  margin-top: 0.1rem;
+  accent-color: var(--color-primary);
+}
+
+.quotation-tax-toggle strong,
+.quotation-tax-toggle small {
+  display: block;
+}
+
+.quotation-tax-toggle strong {
+  color: var(--color-primary-deep);
+  font-size: 0.9rem;
+}
+
+.quotation-tax-toggle small {
+  margin-top: 0.16rem;
+  color: var(--color-charcoal-light);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
 .quotation-total-row span,
 .quotation-grand-total span {
   color: var(--color-charcoal-light);
