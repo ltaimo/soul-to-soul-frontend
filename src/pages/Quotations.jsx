@@ -221,19 +221,20 @@ export const Quotations = () => {
           <title>${quote.number}</title>
           <style>
             body { font-family: Arial, sans-serif; color: #2E2E2E; padding: 28px; }
-            header { display: grid; grid-template-columns: 170px 1fr; gap: 24px; align-items: start; border-bottom: 2px solid #6B8E7E; padding-bottom: 14px; }
+            header { display: grid; grid-template-columns: 170px 1fr; gap: 24px; align-items: center; border-bottom: 2px solid #6B8E7E; padding-bottom: 14px; }
             .brand { width: 154px; padding: 10px; background: #fff; border: 1px solid #E8E5DF; border-radius: 10px; text-align: center; }
             .brand img { width: 124px; margin: 0 auto 6px; }
             .brand strong, .brand span { display: block; }
             .brand strong { color: #3F5F51; font-size: 12px; }
             .brand span { color: #5A5A5A; font-size: 9.5px; line-height: 1.28; margin-top: 2px; }
-            .document-head { display: grid; grid-template-columns: minmax(180px, 0.75fr) minmax(300px, 1.25fr); gap: 18px; align-items: start; padding-top: 4px; }
+            .document-head { display: grid; grid-template-columns: minmax(180px, 0.72fr) minmax(320px, 1.28fr); gap: 24px; align-items: center; min-height: 136px; }
             h1 { margin: 0; color: #3F5F51; font-size: 20px; text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
             .muted, td span { color: #5A5A5A; font-size: 11px; display: block; margin-top: 3px; }
-            .document-section { padding: 0 4px; }
-            .document-section h2 { margin: 0 0 10px; color: #3F5F51; font-size: 20px; text-align: center; text-transform: uppercase; letter-spacing: 0.04em; }
-            .info-grid { display: grid; gap: 5px; }
-            .info-line { display: grid; grid-template-columns: 68px 1fr; gap: 7px; font-size: 12px; }
+            .document-section { display: grid; align-content: center; min-height: 116px; padding: 0 10px; }
+            .document-section + .document-section { border-left: 1px solid #E8E5DF; padding-left: 24px; }
+            .document-section h2 { margin: 0 0 12px; color: #3F5F51; font-size: 20px; text-align: center; text-transform: uppercase; letter-spacing: 0.04em; }
+            .info-grid { display: grid; gap: 6px; width: 100%; max-width: 360px; margin: 0 auto; }
+            .info-line { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 8px; align-items: baseline; font-size: 12px; }
             .info-line span { color: #5A5A5A; }
             .info-line strong { color: #2E2E2E; }
             table { width: 100%; border-collapse: collapse; margin-top: 16px; }
