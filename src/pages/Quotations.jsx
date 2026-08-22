@@ -220,39 +220,39 @@ export const Quotations = () => {
         <head>
           <title>${quote.number}</title>
           <style>
-            body { font-family: Arial, sans-serif; color: #2E2E2E; padding: 32px; }
-            header { display: grid; grid-template-columns: 210px 1fr; gap: 24px; align-items: stretch; border-bottom: 2px solid #6B8E7E; padding-bottom: 18px; }
-            .brand { width: 190px; padding: 12px; background: #fff; border: 1px solid #E8E5DF; border-radius: 12px; text-align: center; }
-            .brand img { width: 148px; margin: 0 auto 8px; }
+            body { font-family: Arial, sans-serif; color: #2E2E2E; padding: 28px; }
+            header { display: grid; grid-template-columns: 178px 1fr; gap: 18px; align-items: stretch; border-bottom: 2px solid #6B8E7E; padding-bottom: 14px; }
+            .brand { width: 154px; padding: 10px; background: #fff; border: 1px solid #E8E5DF; border-radius: 10px; text-align: center; }
+            .brand img { width: 124px; margin: 0 auto 6px; }
             .brand strong, .brand span { display: block; }
-            .brand strong { color: #3F5F51; font-size: 14px; }
-            .brand span { color: #5A5A5A; font-size: 11px; line-height: 1.35; margin-top: 3px; }
-            .document-head { display: grid; grid-template-columns: 1fr 1.15fr; gap: 14px; }
-            h1 { margin: 0; color: #3F5F51; font-size: 28px; }
-            .muted, td span { color: #5A5A5A; font-size: 12px; display: block; margin-top: 3px; }
-            .document-card { border: 1px solid #E8E5DF; border-radius: 12px; padding: 14px; background: #fff; }
-            .document-card h2 { margin: 0 0 10px; color: #3F5F51; font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; }
-            .info-grid { display: grid; gap: 8px; }
-            .info-line { display: grid; grid-template-columns: 78px 1fr; gap: 8px; font-size: 13px; }
+            .brand strong { color: #3F5F51; font-size: 12px; }
+            .brand span { color: #5A5A5A; font-size: 9.5px; line-height: 1.28; margin-top: 2px; }
+            .document-head { display: grid; grid-template-columns: 0.86fr 1.08fr 0.78fr; gap: 10px; }
+            h1 { margin: 0; color: #3F5F51; font-size: 17px; text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
+            .muted, td span { color: #5A5A5A; font-size: 11px; display: block; margin-top: 3px; }
+            .document-card { border: 1px solid #E8E5DF; border-radius: 10px; padding: 10px; background: #fff; }
+            .document-card h2 { margin: 0 0 8px; color: #3F5F51; font-size: 17px; text-align: center; text-transform: uppercase; letter-spacing: 0.04em; }
+            .info-grid { display: grid; gap: 5px; }
+            .info-line { display: grid; grid-template-columns: 64px 1fr; gap: 7px; font-size: 11.5px; }
             .info-line span { color: #5A5A5A; }
             .info-line strong { color: #2E2E2E; }
-            .meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 24px 0; }
-            .box { border: 1px solid #E8E5DF; border-radius: 10px; padding: 12px; }
-            .box span { color: #5A5A5A; font-size: 12px; text-transform: uppercase; }
-            .box strong { display: block; margin-top: 6px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 18px; }
-            th, td { border-bottom: 1px solid #E8E5DF; padding: 12px; text-align: left; }
+            .price-card { display: grid; align-content: center; text-align: center; background: #FBF7EF; border-color: rgba(107, 142, 126, 0.32); }
+            .price-card h2 { margin-bottom: 6px; }
+            .price-card strong { color: #3F5F51; font-size: 19px; line-height: 1.1; }
+            .price-card small { display: block; margin-top: 5px; color: #5A5A5A; font-size: 10.5px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+            th, td { border-bottom: 1px solid #E8E5DF; padding: 10px 11px; text-align: left; }
             th { background: #FBF7EF; color: #5A5A5A; font-size: 12px; text-transform: uppercase; }
             td:nth-child(2), td:nth-child(3), td:nth-child(4), th:nth-child(2), th:nth-child(3), th:nth-child(4) { text-align: right; }
-            .totals { width: 320px; margin-left: auto; margin-top: 20px; }
-            .totals div { display: flex; justify-content: space-between; padding: 8px 0; }
-            .grand { color: #3F5F51; font-size: 22px; font-weight: 700; border-top: 2px solid #6B8E7E; }
-            .notes { margin-top: 28px; padding: 16px; background: #FBF7EF; border-radius: 10px; }
-            .signature { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: end; margin-top: 30px; padding-top: 18px; border-top: 1px solid #E8E5DF; }
-            .signature-box { min-width: 260px; padding: 14px; border: 1px solid #6B8E7E; border-radius: 10px; text-align: center; }
+            .totals { width: 300px; margin-left: auto; margin-top: 16px; }
+            .totals div { display: flex; justify-content: space-between; padding: 6px 0; font-size: 12.5px; }
+            .grand { color: #3F5F51; font-size: 18px !important; font-weight: 700; border-top: 2px solid #6B8E7E; margin-top: 2px; padding-top: 9px !important; }
+            .notes { margin-top: 22px; padding: 13px; background: #FBF7EF; border-radius: 10px; font-size: 12px; }
+            .signature { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: end; margin-top: 22px; padding-top: 15px; border-top: 1px solid #E8E5DF; }
+            .signature-box { min-width: 240px; padding: 12px; border: 1px solid #6B8E7E; border-radius: 10px; text-align: center; }
             .signature-box strong { display: block; color: #3F5F51; font-size: 13px; }
             .signature-box span { display: block; margin-top: 6px; color: #5A5A5A; font-size: 11px; letter-spacing: 0.04em; }
-            .actions { margin-top: 24px; }
+            .actions { margin-top: 20px; }
             button { padding: 12px 18px; border: 0; border-radius: 8px; background: #6B8E7E; color: #fff; font-weight: 700; }
             @media print { button { display: none; } body { padding: 0; } }
           </style>
@@ -286,12 +286,13 @@ export const Quotations = () => {
                   <div class="info-line"><span>Email</span><strong>${quote.customerEmail || '-'}</strong></div>
                 </div>
               </div>
+              <div class="document-card price-card">
+                <h2>Total</h2>
+                <strong>${formatCurrency(quote.total, settings)}</strong>
+                <small>${quote.includeVat ? 'Inclui IVA de 16%' : 'IVA não aplicado'}</small>
+              </div>
             </div>
           </header>
-          <section class="meta">
-            <div class="box"><span>Comercial</span><strong>${quote.partnerName || quote.sellerName || 'Soul2Soul'}</strong><small>${quote.status}</small></div>
-            <div class="box"><span>Total da cotação</span><strong>${formatCurrency(quote.total, settings)}</strong><small>${quote.includeVat ? 'Inclui IVA de 16%' : 'IVA não aplicado'}</small></div>
-          </section>
           <table>
             <thead><tr><th>Produto</th><th>Qtd.</th><th>Preço</th><th>Total</th></tr></thead>
             <tbody>${itemRows}</tbody>
