@@ -3287,6 +3287,285 @@ tr:hover {
   text-align: center;
 }
 
+.quotation-hero {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) minmax(220px, 320px);
+  gap: 1.5rem;
+  align-items: stretch;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #fff;
+  background:
+    linear-gradient(135deg, rgba(63, 95, 81, 0.98), rgba(85, 97, 15, 0.82)),
+    var(--color-primary-deep);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.quotation-brand-card {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.28rem;
+  min-height: 132px;
+  padding: 0.9rem;
+  background: #fff;
+  border: 1px solid rgba(232, 229, 223, 0.96);
+  border-radius: var(--radius-md);
+}
+
+.quotation-brand-card img {
+  width: min(132px, 100%);
+  max-height: 92px;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  margin-bottom: 0.25rem;
+}
+
+.quotation-brand-card strong,
+.quotation-brand-card span {
+  color: var(--color-primary-deep);
+  text-align: center;
+}
+
+.quotation-brand-card strong {
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.quotation-brand-card span {
+  max-width: 100%;
+  color: var(--color-charcoal-light);
+  font-size: 0.72rem;
+  line-height: 1.25;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.quotation-kicker {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0.25rem 0.65rem;
+  margin-bottom: 0.8rem;
+  color: var(--color-sand);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.quotation-hero h1 {
+  margin-bottom: 0.45rem;
+  font-size: clamp(1.8rem, 3vw, 2.55rem);
+  line-height: 1.1;
+}
+
+.quotation-hero p {
+  max-width: 720px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.98rem;
+}
+
+.quotation-hero-total {
+  display: grid;
+  align-content: center;
+  gap: 0.35rem;
+  min-height: 132px;
+  padding: 1.1rem;
+  background: rgba(251, 247, 239, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-md);
+}
+
+.quotation-hero-total span,
+.quotation-hero-total small {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.quotation-hero-total strong {
+  color: #fff;
+  font-size: clamp(1.55rem, 3vw, 2.2rem);
+}
+
+.quotation-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.quotation-builder,
+.quotation-side {
+  min-width: 0;
+}
+
+.quotation-side {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.quotation-summary-card {
+  position: sticky;
+  top: 1rem;
+}
+
+.quotation-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.quotation-products {
+  display: grid;
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.quotation-pick-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.quotation-pick-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  min-height: 74px;
+  padding: 0.8rem;
+  color: var(--color-charcoal);
+  text-align: left;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.quotation-pick-list button:hover {
+  border-color: rgba(107, 142, 126, 0.35);
+  background: rgba(107, 142, 126, 0.08);
+}
+
+.quotation-pick-list span,
+.quotation-pick-list small {
+  display: block;
+  min-width: 0;
+}
+
+.quotation-pick-list small {
+  margin-top: 0.22rem;
+  color: var(--color-charcoal-light);
+  font-size: 0.74rem;
+}
+
+.quotation-pick-list button > strong {
+  flex: 0 0 auto;
+  color: var(--color-primary-deep);
+  font-size: 0.86rem;
+}
+
+.quotation-lines {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.quotation-line {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 128px 130px 120px 42px;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.85rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.quotation-line span {
+  display: block;
+  margin-top: 0.18rem;
+  color: var(--color-charcoal-light);
+  font-size: 0.78rem;
+}
+
+.quotation-price-input {
+  min-height: 42px;
+}
+
+.quotation-total-row,
+.quotation-grand-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.quotation-total-row span,
+.quotation-grand-total span {
+  color: var(--color-charcoal-light);
+  font-weight: 700;
+}
+
+.quotation-grand-total {
+  margin-bottom: 1rem;
+  border-bottom: 0;
+}
+
+.quotation-grand-total strong {
+  color: var(--color-primary-deep);
+  font-size: 1.55rem;
+}
+
+.quotation-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.quotation-actions .btn {
+  width: 100%;
+}
+
+.quotation-history-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.quotation-history-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  width: 100%;
+  padding: 0.75rem;
+  color: var(--color-charcoal);
+  text-align: left;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.quotation-history-list button:hover {
+  border-color: rgba(107, 142, 126, 0.35);
+  background: rgba(107, 142, 126, 0.08);
+}
+
+.quotation-history-list span,
+.quotation-history-list small {
+  display: block;
+}
+
+.quotation-history-list small {
+  margin-top: 0.2rem;
+  color: var(--color-charcoal-light);
+  font-size: 0.74rem;
+}
+
 @media (max-width: 1440px) {
   .main-content {
     padding: 2rem;
@@ -3324,6 +3603,7 @@ tr:hover {
 
 @media (max-width: 1100px) {
   .pos-grid,
+  .quotation-layout,
   .production-grid,
   .purchasing-grid,
   .dashboard-chart-grid,
@@ -3333,6 +3613,10 @@ tr:hover {
   }
 
   .store-cart-card {
+    position: static;
+  }
+
+  .quotation-summary-card {
     position: static;
   }
 }
@@ -3598,6 +3882,9 @@ tr:hover {
   .settings-grid,
   .reports-grid,
   .content-grid,
+  .quotation-hero,
+  .quotation-form-grid,
+  .quotation-pick-list,
   .fund-layout,
   .fund-hero {
     grid-template-columns: 1fr;
@@ -3804,7 +4091,12 @@ tr:hover {
 
   .receive-grid,
   .receive-preview,
+  .quotation-line,
   .payment-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quotation-actions {
     grid-template-columns: 1fr;
   }
 }

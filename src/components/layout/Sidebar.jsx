@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { LayoutDashboard, Box, Package, ShoppingCart, Users, RefreshCw, ReceiptText, FileSpreadsheet, Settings, Shield, LogOut, HeartHandshake, Handshake, ShieldCheck, X, HelpCircle, HandCoins, Bell } from 'lucide-react';
+import { LayoutDashboard, Box, Package, ShoppingCart, Users, RefreshCw, ReceiptText, FileSpreadsheet, Settings, Shield, LogOut, HeartHandshake, Handshake, ShieldCheck, X, HelpCircle, HandCoins, Bell, FileText } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import { LanguageContext } from '../../context/LanguageContext';
 import { StoreContext } from '../../context/StoreContext';
@@ -19,6 +19,7 @@ export const Sidebar = ({ activePage, setActivePage, mobileOpen = false, closeMo
     { id: 'Suppliers', name: t.suppliers, icon: <Users size={20} /> },
     { id: 'Customers', name: t.customers, icon: <HeartHandshake size={20} /> },
     { id: 'Sellers & Resellers', name: t.sellersResellers, icon: <Handshake size={20} /> },
+    { id: 'Quotations', name: t.quotations || 'Quotations', icon: <FileText size={20} /> },
     { id: 'Human Resources', name: t.humanResources, icon: <Users size={20} /> },
     { id: 'Fund Requests', name: t.fundRequests || 'Fund Requests', icon: <HandCoins size={20} /> },
     { id: 'Production', name: t.production, icon: <RefreshCw size={20} /> },

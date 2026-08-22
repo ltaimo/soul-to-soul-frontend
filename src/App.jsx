@@ -15,6 +15,7 @@ const Purchasing = lazy(() => import('./pages/Purchasing').then((module) => ({ d
 const Suppliers = lazy(() => import('./pages/Suppliers').then((module) => ({ default: module.Suppliers })));
 const Customers = lazy(() => import('./pages/Customers').then((module) => ({ default: module.Customers })));
 const CommercialPartners = lazy(() => import('./pages/CommercialPartners').then((module) => ({ default: module.CommercialPartners })));
+const Quotations = lazy(() => import('./pages/Quotations').then((module) => ({ default: module.Quotations })));
 const FundRequests = lazy(() => import('./pages/FundRequests').then((module) => ({ default: module.FundRequests })));
 const Notifications = lazy(() => import('./pages/Notifications').then((module) => ({ default: module.Notifications })));
 const HumanResources = lazy(() => import('./pages/HumanResources').then((module) => ({ default: module.HumanResources })));
@@ -92,6 +93,8 @@ function AppContent() {
         return <Customers activeFilter={activeFilter} />;
       case 'Sellers & Resellers':
         return <CommercialPartners />;
+      case 'Quotations':
+        return <Quotations />;
       case 'Human Resources':
         return <HumanResources />;
       case 'Fund Requests':
