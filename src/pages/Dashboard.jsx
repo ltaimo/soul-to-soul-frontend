@@ -3,13 +3,19 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, 
   LineChart, Line, PieChart, Pie, Cell 
 } from 'recharts';
-import { TrendingUp, AlertCircle, Target, DollarSign, Package, Shield, Warehouse, ArrowRightLeft, Users, HeartHandshake, ShieldCheck, RefreshCw } from 'lucide-react';
+import { TrendingUp, AlertCircle, Target, DollarSign, Package, Shield, Warehouse, ArrowRightLeft, Users, HeartHandshake, ShieldCheck, RefreshCw, Trophy } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '../utils/formatters';
 import { StoreContext } from '../context/StoreContext';
 import { AuthContext } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 
 const COLORS = ['#6B8E7E', '#E8DCCB', '#2E2E2E', '#F7F5F2'];
+const SELLER_RANKING_PERIODS = [
+  { key: 'today', labelKey: 'today' },
+  { key: 'this_week', labelKey: 'thisWeek' },
+  { key: 'this_month', labelKey: 'thisMonth' },
+  { key: 'this_year', labelKey: 'thisYear' },
+];
 
 export const Dashboard = ({ setActivePage }) => {
   const { settings } = useContext(StoreContext);
@@ -17,6 +23,7 @@ export const Dashboard = ({ setActivePage }) => {
   const { translate } = useContext(LanguageContext);
   const [kpis, setKpis] = useState(null);
   const [alerts, setAlerts] = useState(null);
+  const [sellerRankings, setSellerRankings] = useState({});
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const canSeeFinancials = user?.role === 'admin' || user?.role === 'manager';
@@ -34,18 +41,29 @@ export const Dashboard = ({ setActivePage }) => {
     const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
     const stamp = Date.now();
 
+    const sellerRankingRequest = canSeeFinancials
+      ? Promise.all(SELLER_RANKING_PERIODS.map(async (period) => {
+          const response = await fetch(`${apiBase}/api/analytics/seller-ranking?period=${period.key}&_=${stamp}`, fetchOptions);
+          if (response.status === 401) logout();
+          if (!response.ok) return [period.key, []];
+          return [period.key, await response.json()];
+        })).then((entries) => Object.fromEntries(entries))
+      : Promise.resolve({});
+
     const requests = [
       canSeeFinancials
         ? fetch(`${apiBase}/api/analytics/kpis?_=${stamp}`, fetchOptions).then(r => { if(r.status===401) logout(); return r.json()})
         : Promise.resolve(null),
       canSeeAlerts
         ? fetch(`${apiBase}/api/analytics/alerts?_=${stamp}`, fetchOptions).then(r => { if(r.status===401) logout(); return r.json()})
-        : Promise.resolve(null)
+        : Promise.resolve(null),
+      sellerRankingRequest
     ];
 
-    return Promise.all(requests).then(([kpiData, alertsData]) => {
+    return Promise.all(requests).then(([kpiData, alertsData, sellerRankingData]) => {
       setKpis(kpiData);
       setAlerts(alertsData);
+      setSellerRankings(sellerRankingData || {});
       setLastUpdated(new Date());
     }).catch(err => console.error("Could not fetch analytics", err))
       .finally(() => setIsRefreshing(false));
@@ -61,6 +79,7 @@ export const Dashboard = ({ setActivePage }) => {
     name: key,
     value: kpis.inventoryBreakdown[key]
   })).filter(d => d.value > 0);
+  const monthlySellerRanking = sellerRankings.this_month || [];
 
   return (
     <div>
@@ -145,6 +164,84 @@ export const Dashboard = ({ setActivePage }) => {
             <div className="stat-trend"><ShieldCheck size={16} /> User actions tracked</div>
           </div>
         </div>
+      )}
+
+      {canSeeFinancials && (
+        <section className="seller-ranking-section" aria-labelledby="seller-ranking-title">
+          <div className="seller-ranking-header">
+            <div>
+              <h2 id="seller-ranking-title">
+                <Trophy size={20} />
+                {translate('bestSellers')}
+              </h2>
+              <p>{translate('bestSellersHint')}</p>
+            </div>
+            <button className="btn btn-secondary" type="button" onClick={() => setActivePage ? setActivePage('Sales / POS') : null}>
+              <DollarSign size={16} />
+              {translate('openSales')}
+            </button>
+          </div>
+
+          <div className="seller-ranking-periods">
+            {SELLER_RANKING_PERIODS.map((period) => {
+              const leader = sellerRankings[period.key]?.[0];
+              return (
+                <div className="seller-ranking-period" key={period.key}>
+                  <span>{translate(period.labelKey)}</span>
+                  {leader ? (
+                    <>
+                      <strong>{leader.sellerName || translate('unassignedSeller')}</strong>
+                      <b>{formatCurrency(leader.netPaid || 0, settings)}</b>
+                      <small>
+                        {leader.sales || 0} {translate('sales').toLowerCase()} - {leader.units || 0} {translate('units').toLowerCase()} - {formatCurrency(leader.averageTicket || 0, settings)} {translate('avgTicket')}
+                      </small>
+                    </>
+                  ) : (
+                    <>
+                      <strong>{translate('noSellerSales')}</strong>
+                      <b>{formatCurrency(0, settings)}</b>
+                      <small>{translate('noSellerSalesHint')}</small>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="seller-ranking-table-wrap">
+            <h3>{translate('monthlySellerRanking')}</h3>
+            {monthlySellerRanking.length > 0 ? (
+              <div className="table-container seller-ranking-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>{translate('seller')}</th>
+                      <th>{translate('netSales')}</th>
+                      <th>{translate('sales')}</th>
+                      <th>{translate('units')}</th>
+                      <th>{translate('avgTicket')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monthlySellerRanking.slice(0, 5).map((seller, index) => (
+                      <tr key={seller.sellerId || seller.sellerName || index}>
+                        <td>{index + 1}</td>
+                        <td>{seller.sellerName || translate('unassignedSeller')}</td>
+                        <td>{formatCurrency(seller.netPaid || 0, settings)}</td>
+                        <td>{seller.sales || 0}</td>
+                        <td>{seller.units || 0}</td>
+                        <td>{formatCurrency(seller.averageTicket || 0, settings)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="seller-ranking-empty">{translate('noSellerSalesHint')}</p>
+            )}
+          </div>
+        </section>
       )}
 
       {/* BI Charts Layer */}
