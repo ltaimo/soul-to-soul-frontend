@@ -34,6 +34,18 @@ const formatDateTime = (date) => {
   });
 };
 
+const buildSellerRanking = (sales = []) => Array.from(
+  sales.reduce((acc, sale) => {
+    const key = sale.sellerName || 'Sem vendedor';
+    const current = acc.get(key) || { name: key, sales: 0, units: 0, revenue: 0 };
+    current.sales += 1;
+    current.units += (sale.items || []).reduce((sum, item) => sum + item.quantity, 0);
+    current.revenue += Number(sale.totalRevenue) || 0;
+    acc.set(key, current);
+    return acc;
+  }, new Map()).values()
+).sort((a, b) => b.revenue - a.revenue || b.sales - a.sales || b.units - a.units);
+
 export const Reports = () => {
   const { settings } = useContext(StoreContext);
   const { token, logout } = useContext(AuthContext);
@@ -319,6 +331,18 @@ export const Reports = () => {
         : 'Todas as vendas registadas';
       const rows = report.sales || [];
       const summary = report.summary || {};
+      const sellerRanking = buildSellerRanking(rows);
+      const topSeller = sellerRanking[0];
+      const sellerRows = sellerRanking.map((seller, index) => `
+        <tr class="${index === 0 ? 'top-seller-row' : ''}">
+          <td>${index + 1}</td>
+          <td>${escapeHtml(seller.name)}</td>
+          <td class="num">${formatCurrency(seller.revenue, settings)}</td>
+          <td class="num">${seller.sales}</td>
+          <td class="num">${seller.units}</td>
+          <td>${index === 0 ? 'Mais vendeu no periodo' : ''}</td>
+        </tr>
+      `).join('');
 
       const saleRows = rows.map((sale) => {
         const items = (sale.items || []).map((item) => {
@@ -363,10 +387,16 @@ export const Reports = () => {
               .metric { border: 1px solid #ddd; border-radius: 6px; padding: 8px; }
               .metric span { display: block; color: #666; font-size: 10px; text-transform: uppercase; }
               .metric strong { display: block; margin-top: 4px; font-size: 14px; }
+              .top-seller { display: grid; grid-template-columns: 1.2fr 2fr; gap: 12px; margin-bottom: 16px; }
+              .top-seller-card { border: 2px solid #6B8E7E; border-radius: 8px; padding: 10px; background: #f7faf5; }
+              .top-seller-card span { display: block; color: #50685d; font-size: 10px; text-transform: uppercase; font-weight: 700; }
+              .top-seller-card strong { display: block; margin: 5px 0; color: #2f5748; font-size: 18px; }
+              .seller-table { margin-bottom: 16px; }
               table { width: 100%; border-collapse: collapse; font-size: 10px; }
               th { background: #f3f0ea; color: #333; text-align: left; }
               th, td { border-bottom: 1px solid #ddd; padding: 6px; vertical-align: top; }
               .num { text-align: right; white-space: nowrap; }
+              .top-seller-row td { background: #eef5ef; font-weight: 700; }
               .actions { position: sticky; top: 0; display: flex; justify-content: flex-end; gap: 8px; padding: 10px 0; background: white; }
               button { border: 0; border-radius: 6px; padding: 8px 12px; background: #6B8E7E; color: white; cursor: pointer; }
               @media print { .actions { display: none; } }
@@ -391,6 +421,19 @@ export const Reports = () => {
               <div class="metric"><span>Receita</span><strong>${formatCurrency(summary.totalRevenue || 0, settings)}</strong></div>
               <div class="metric"><span>Lucro bruto</span><strong>${formatCurrency(summary.grossProfit || 0, settings)}</strong></div>
               <div class="metric"><span>Ticket medio</span><strong>${formatCurrency(summary.averageTicket || 0, settings)}</strong></div>
+            </section>
+            <section class="top-seller">
+              <div class="top-seller-card">
+                <span>Vendedor destaque</span>
+                <strong>${topSeller ? escapeHtml(topSeller.name) : 'Sem vendas'}</strong>
+                <p>${topSeller ? `${formatCurrency(topSeller.revenue, settings)} em ${topSeller.sales} vendas e ${topSeller.units} unidades.` : 'Sem vendas no periodo selecionado.'}</p>
+              </div>
+              <table class="seller-table">
+                <thead>
+                  <tr><th>#</th><th>Vendedor</th><th class="num">Vendas liquidas</th><th class="num">Qtd. vendas</th><th class="num">Unidades</th><th>Destaque</th></tr>
+                </thead>
+                <tbody>${sellerRows || '<tr><td colspan="6">Sem ranking de vendedores.</td></tr>'}</tbody>
+              </table>
             </section>
             <table>
               <thead>

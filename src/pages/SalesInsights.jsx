@@ -243,6 +243,26 @@ export const SalesInsights = ({ activeFilter }) => {
     total: item.quantity * item.unitSellingPrice,
   })) || [];
 
+  const buildLoyaltyReceiptMessage = (sale) => {
+    const earned = Number(sale?.pointsEarned) || 0;
+    const redeemed = Number(sale?.pointsRedeemed) || 0;
+    const customerNameText = sale?.customerName && sale.customerName !== t.retailCustomer
+      ? `${sale.customerName}, `
+      : '';
+    const earnedLine = earned > 0
+      ? `Parabens! ${customerNameText}com esta compra acumulou ${earned} ponto${earned === 1 ? '' : 's'}.`
+      : `${customerNameText}continue a comprar na Soul2Soul para acumular pontos.`;
+    const redeemedLine = redeemed > 0
+      ? `Nesta compra usou ${redeemed} ponto${redeemed === 1 ? '' : 's'} no programa de fidelizacao.`
+      : '';
+
+    return [
+      earnedLine,
+      redeemedLine,
+      'Compre mais vezes, acumule mais pontos e habilite-se a ganhar produtos mahala.',
+    ].filter(Boolean).join('\n');
+  };
+
   const buildReceiptText = (sale) => {
     if (!sale) return '';
     const lines = receiptLines(sale)
@@ -262,6 +282,8 @@ export const SalesInsights = ({ activeFilter }) => {
       `${t.paymentMethod}: ${sale.paymentMethod}`,
       `${t.amountPaid}: ${formatCurrency(sale.amountPaid, settings)}`,
       `${t.change}: ${formatCurrency(sale.changeGiven, settings)}`,
+      '',
+      buildLoyaltyReceiptMessage(sale),
     ].join('\n');
   };
 
@@ -274,6 +296,12 @@ export const SalesInsights = ({ activeFilter }) => {
         <td style="text-align:right">${formatCurrency(line.total, settings)}</td>
       </tr>
     `).join('');
+    const loyaltyMessage = buildLoyaltyReceiptMessage(sale)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
     const win = window.open('', '_blank', 'width=420,height=720');
     win.document.write(`
       <html>
@@ -288,6 +316,8 @@ export const SalesInsights = ({ activeFilter }) => {
             th, td { border-bottom: 1px solid #E8E5DF; padding: 8px 0; }
             th { text-align: left; }
             .total { display: flex; justify-content: space-between; font-weight: 700; margin-top: 8px; }
+            .loyalty-message { margin-top: 16px; border: 1px dashed #6B8E7E; border-radius: 8px; padding: 12px; background: #F7FAF6; color: #2E2E2E; font-size: 13px; line-height: 1.45; white-space: pre-line; }
+            .whatsapp-ready { color: #4a6b5d; text-align: center; font-size: 11px; margin-top: 8px; }
             .muted { color: #5A5A5A; text-align: center; margin-top: 20px; }
             button { width: 100%; padding: 10px; margin-top: 18px; }
             @media print { button { display: none; } body { padding: 0; } }
@@ -307,6 +337,8 @@ export const SalesInsights = ({ activeFilter }) => {
           <div class="total"><span>Paid</span><span>${formatCurrency(sale.amountPaid, settings)}</span></div>
           <div class="total"><span>Change</span><span>${formatCurrency(sale.changeGiven, settings)}</span></div>
           <p><strong>${t.paymentMethod}:</strong> ${sale.paymentMethod}</p>
+          <div class="loyalty-message">${loyaltyMessage}</div>
+          <p class="whatsapp-ready">Mensagem de fidelizacao preparada para envio automatico por WhatsApp.</p>
           <p class="muted">${language === 'pt' ? 'Obrigado por comprar na Soul to Soul.' : 'Thank you for shopping with Soul to Soul.'}</p>
           <button onclick="window.print()">Print / Save PDF</button>
         </body>
@@ -321,6 +353,12 @@ export const SalesInsights = ({ activeFilter }) => {
     const body = encodeURIComponent(buildReceiptText(sale));
     const to = encodeURIComponent(sale.customerEmail || '');
     window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+  };
+
+  const whatsappReceipt = (sale) => {
+    const phone = String(sale.customerPhone || '').replace(/\D/g, '');
+    const message = encodeURIComponent(buildReceiptText(sale));
+    window.open(`https://wa.me/${phone ? phone : ''}?text=${message}`, '_blank');
   };
 
   const handleSale = async (event) => {
@@ -776,12 +814,17 @@ export const SalesInsights = ({ activeFilter }) => {
               <div className="receipt-total"><span>Total</span><strong>{formatCurrency(lastReceipt.totalRevenue, settings)}</strong></div>
               <div className="receipt-line"><span>{t.paymentMethod}: {lastReceipt.paymentMethod}</span><strong>{formatCurrency(lastReceipt.amountPaid, settings)}</strong></div>
               <div className="receipt-line"><span>{t.change}</span><strong>{formatCurrency(lastReceipt.changeGiven, settings)}</strong></div>
+              <div className="receipt-loyalty-message">
+                {buildLoyaltyReceiptMessage(lastReceipt)}
+                <small>Pronto para envio automatico por WhatsApp.</small>
+              </div>
             </div>
 
             <div className="receipt-actions">
               <button className="btn btn-secondary" type="button" onClick={() => printReceipt(lastReceipt)}><Printer size={18} /> {t.print}</button>
               <button className="btn btn-secondary" type="button" onClick={() => printReceipt(lastReceipt)}><Download size={18} /> {t.pdf}</button>
               <button className="btn btn-primary" type="button" onClick={() => emailReceipt(lastReceipt)}><Mail size={18} /> {t.emailDraft}</button>
+              <button className="btn btn-secondary" type="button" onClick={() => whatsappReceipt(lastReceipt)}>WhatsApp</button>
             </div>
           </div>
         </div>
