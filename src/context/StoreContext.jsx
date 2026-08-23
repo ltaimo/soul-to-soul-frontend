@@ -145,10 +145,11 @@ export const StoreProvider = ({ children }) => {
       await fetchSales();
 
       if (canAccessHr) {
+        const currentMonth = new Date().toISOString().slice(0, 7);
         const [employeesRes, paymentsRes, attendanceRes, summaryRes, payrollRes, goalsRes] = await Promise.all([
           fetchWithAuth(`${apiBaseUrl}/api/hr/employees`),
           fetchWithAuth(`${apiBaseUrl}/api/hr/payments`),
-          fetchWithAuth(`${apiBaseUrl}/api/hr/attendance`),
+          fetchWithAuth(`${apiBaseUrl}/api/hr/attendance?month=${encodeURIComponent(currentMonth)}`),
           fetchWithAuth(`${apiBaseUrl}/api/hr/summary`),
           fetchWithAuth(`${apiBaseUrl}/api/hr/payroll`),
           fetchWithAuth(`${apiBaseUrl}/api/hr/goals`)
@@ -806,7 +807,6 @@ export const StoreProvider = ({ children }) => {
         totals: calculatePayrollTotals((current.payments || []).map((payment) => payment.id === id ? result.payment : payment)),
       } : current);
       setHrSummary((current) => current ? updateHrSummaryPaymentTotals(current, hrPayments, result.payment) : current);
-      refreshInBackground();
       return { success: true, payment: result.payment };
     } catch (e) {
       return { success: false, error: e.message || 'Failed to update payment' };
@@ -824,9 +824,8 @@ export const StoreProvider = ({ children }) => {
       if (!response.ok || !result.success) throw result;
       setAttendanceRecords((current) => {
         const next = current.filter((record) => record.id !== result.attendance.id && !(record.employeeId === result.attendance.employeeId && record.date?.slice(0, 10) === result.attendance.date?.slice(0, 10)));
-        return [result.attendance, ...next].slice(0, 120);
+        return [result.attendance, ...next];
       });
-      refreshInBackground();
       return { success: true, attendance: result.attendance };
     } catch (e) {
       return { success: false, error: e.message || 'Failed to save attendance' };
@@ -843,6 +842,19 @@ export const StoreProvider = ({ children }) => {
       return { success: true, sheet };
     } catch (e) {
       return { success: false, error: e.message || 'Failed to fetch payroll' };
+    }
+  };
+
+  const fetchAttendance = async (month) => {
+    try {
+      const suffix = month ? `?month=${encodeURIComponent(month)}` : '';
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/hr/attendance${suffix}`);
+      if (!response.ok) throw await response.json();
+      const records = await response.json();
+      setAttendanceRecords(records);
+      return { success: true, records };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to fetch attendance' };
     }
   };
 
@@ -937,6 +949,7 @@ export const StoreProvider = ({ children }) => {
       createHrPayment,
       updateHrPaymentStatus,
       upsertAttendance,
+      fetchAttendance,
       fetchPayroll,
       createWorkGoal,
       updateWorkGoal,

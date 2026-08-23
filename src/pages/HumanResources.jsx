@@ -101,6 +101,7 @@ export const HumanResources = () => {
     createHrPayment,
     updateHrPaymentStatus,
     upsertAttendance,
+    fetchAttendance,
     fetchPayroll,
     createWorkGoal,
     updateWorkGoal,
@@ -122,6 +123,7 @@ export const HumanResources = () => {
   const [goalForm, setGoalForm] = useState(initialGoalForm);
   const [attendanceMonth, setAttendanceMonth] = useState(new Date().toISOString().slice(0, 7));
   const [payrollMonth, setPayrollMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('All');
   const [editId, setEditId] = useState(null);
   const [statusMsg, setStatusMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -136,6 +138,10 @@ export const HumanResources = () => {
 
   const pendingPayments = hrPayments.filter((payment) => payment.status === 'Pending');
   const payrollPayments = payrollSheet?.payments || [];
+  const filteredPayments = hrPayments.filter((payment) => paymentStatusFilter === 'All' || payment.status === paymentStatusFilter);
+  const attendanceControlledEmployees = employees.filter((employee) => employee.performanceMode !== 'Goals');
+  const goalsControlledEmployees = employees.filter((employee) => employee.performanceMode === 'Goals');
+  const monthlyPayrollTotals = payrollSheet?.totals || { gross: 0, paid: 0, pending: 0, paidCount: 0, pendingCount: 0 };
   const monthDates = useMemo(() => {
     const [year, month] = attendanceMonth.split('-').map(Number);
     const days = new Date(year, month, 0).getDate();
@@ -152,6 +158,18 @@ export const HumanResources = () => {
     });
     return map;
   }, [attendanceRecords]);
+
+  const attendanceMonthTotals = useMemo(() => {
+    const records = attendanceRecords.filter((record) => record.date?.slice(0, 7) === attendanceMonth);
+    return records.reduce(
+      (acc, record) => ({
+        ...acc,
+        [record.status]: (acc[record.status] || 0) + 1,
+        marked: acc.marked + 1,
+      }),
+      { marked: 0, Present: 0, Absent: 0, Late: 0, Leave: 0, 'Half Day': 0 }
+    );
+  }, [attendanceMonth, attendanceRecords]);
 
   const markAttendanceQuick = async (employeeId, date, checked) => {
     const result = await upsertAttendance({
@@ -176,6 +194,12 @@ export const HumanResources = () => {
       late: records.filter((record) => record.status === 'Late').length,
     };
   };
+
+  const monthlyWorkerRows = employees.map((employee) => {
+    const summary = monthlySummaryFor(employee.id);
+    const salaryPayment = payrollPayments.find((payment) => payment.employeeId === employee.id);
+    return { employee, summary, salaryPayment };
+  });
 
   const openEmployeeModal = (employee = null) => {
     setErrorMsg('');
@@ -308,6 +332,12 @@ export const HumanResources = () => {
     setErrorMsg(result.success ? '' : result.error || 'Could not load payroll.');
   };
 
+  const changeAttendanceMonth = async (month) => {
+    setAttendanceMonth(month);
+    const result = await fetchAttendance(month);
+    setErrorMsg(result.success ? '' : result.error || 'Could not load attendance month.');
+  };
+
   const toggleEmployeeStatus = async (employee) => {
     const nextStatus = employee.status === 'Active' ? 'Inactive' : 'Active';
     const result = await updateEmployeeStatus(employee.id, nextStatus);
@@ -420,6 +450,111 @@ export const HumanResources = () => {
         </div>
       </div>
 
+      <section className="hr-month-panel">
+        <div className="hr-month-header">
+          <div>
+            <h2>Gestao do mes</h2>
+            <p>Folha salarial, presencas e pagamentos ficam sincronizados sem precisar atualizar a pagina.</p>
+          </div>
+          <div className="hr-month-controls">
+            <label>
+              <span>Mes da folha</span>
+              <input className="form-input" type="month" value={payrollMonth} onChange={(event) => changePayrollMonth(event.target.value)} />
+            </label>
+            <label>
+              <span>Mes da assiduidade</span>
+              <input className="form-input" type="month" value={attendanceMonth} onChange={(event) => changeAttendanceMonth(event.target.value)} />
+            </label>
+          </div>
+        </div>
+
+        <div className="hr-month-kpis">
+          <div>
+            <span>Trabalhadores ativos</span>
+            <strong>{hrSummary?.activeEmployees || 0}</strong>
+            <small>{attendanceControlledEmployees.length} por assiduidade | {goalsControlledEmployees.length} por metas</small>
+          </div>
+          <div>
+            <span>Salarios do mes</span>
+            <strong>{formatCurrency(monthlyPayrollTotals.gross || 0, settings)}</strong>
+            <small>{monthlyPayrollTotals.paidCount || 0} pagos | {monthlyPayrollTotals.pendingCount || 0} pendentes</small>
+          </div>
+          <div>
+            <span>Presencas marcadas</span>
+            <strong>{attendanceMonthTotals.marked}</strong>
+            <small>{attendanceMonthTotals.Present || 0} presentes | {attendanceMonthTotals.Absent || 0} ausentes | {attendanceMonthTotals.Late || 0} atrasos</small>
+          </div>
+          <div>
+            <span>Pagamentos pendentes</span>
+            <strong>{formatCurrency(hrSummary?.pendingPayments || 0, settings)}</strong>
+            <small>{pendingPayments.length} registos aguardam acao</small>
+          </div>
+        </div>
+
+        <div className="hr-month-workers">
+          <div className="section-heading">
+            <div>
+              <h3>Trabalhadores do mes</h3>
+              <span>Visao operacional para salarios, assiduidade e acoes rapidas.</span>
+            </div>
+            <button className="btn btn-primary" type="button" onClick={() => openEmployeeModal()}>
+              <Plus size={18} /> {translate('addWorker')}
+            </button>
+          </div>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Trabalhador</th>
+                  <th>Controlo</th>
+                  <th>Salario do mes</th>
+                  <th>Assiduidade</th>
+                  <th>Status</th>
+                  <th>Acao</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthlyWorkerRows.map(({ employee, summary, salaryPayment }) => (
+                  <tr key={employee.id}>
+                    <td>
+                      <strong>{employee.fullName}</strong>
+                      <span className="table-muted">{employee.role || '-'} | {employee.department || 'General'}</span>
+                    </td>
+                    <td>{employee.performanceMode === 'Goals' ? 'Metas' : 'Assiduidade'}</td>
+                    <td>
+                      <strong>{formatCurrency(salaryPayment?.amount || employee.salary || 0, settings)}</strong>
+                      <span className="table-muted">{salaryPayment?.receiptNumber || employee.payFrequency}</span>
+                    </td>
+                    <td>{summary.present} P / {summary.absent} A / {summary.late} L</td>
+                    <td>
+                      <span className={`badge ${salaryPayment?.status === 'Paid' ? 'badge-success' : 'badge-warning'}`}>
+                        {salaryPayment?.status || 'Sem folha'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="row-actions">
+                        {salaryPayment && (
+                          <button className="btn btn-ghost compact-btn" type="button" onClick={() => markPaymentPaid(salaryPayment)}>
+                            {salaryPayment.status === 'Paid' ? translate('reopen') : translate('markPaid')}
+                          </button>
+                        )}
+                        <button className="btn btn-ghost compact-btn" type="button" onClick={() => openAttendanceModal(employee)}>Presenca</button>
+                        <button className="btn btn-ghost compact-btn" type="button" onClick={() => openPaymentModal(employee)}>Pagamento</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {monthlyWorkerRows.length === 0 && (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>Nenhum trabalhador registado.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <div className="hr-tabs">
         <button className={activeTab === 'employees' ? 'active' : ''} onClick={() => setActiveTab('employees')}>{translate('workers')}</button>
         <button className={activeTab === 'payroll' ? 'active' : ''} onClick={() => setActiveTab('payroll')}>{translate('payrollSheet')}</button>
@@ -528,8 +663,19 @@ export const HumanResources = () => {
       {activeTab === 'payments' && (
         <div className="card">
           <div className="section-heading">
-            <h3>Payments</h3>
-            <span>{pendingPayments.length} pending</span>
+            <div>
+              <h3>Payments</h3>
+              <span>{filteredPayments.length} shown | {pendingPayments.length} pending</span>
+            </div>
+            <div className="row-actions">
+              <select className="form-input toolbar-select" value={paymentStatusFilter} onChange={(event) => setPaymentStatusFilter(event.target.value)}>
+                <option value="All">All statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Paid">Paid</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+              <button className="btn btn-primary" type="button" onClick={() => openPaymentModal()}><Plus size={18} /> Add Payment</button>
+            </div>
           </div>
           <div className="table-container">
             <table>
@@ -547,7 +693,7 @@ export const HumanResources = () => {
                 </tr>
               </thead>
               <tbody>
-                {hrPayments.map((payment) => (
+                {filteredPayments.map((payment) => (
                   <tr key={payment.id}>
                     <td>{payment.description}</td>
                     <td><span className="badge badge-primary">{payment.type}</span></td>
@@ -564,9 +710,9 @@ export const HumanResources = () => {
                     </td>
                   </tr>
                 ))}
-                {hrPayments.length === 0 && (
+                {filteredPayments.length === 0 && (
                   <tr>
-                    <td colSpan="9" style={{ textAlign: 'center', padding: '2rem' }}>No payments recorded.</td>
+                    <td colSpan="9" style={{ textAlign: 'center', padding: '2rem' }}>No payments match this filter.</td>
                   </tr>
                 )}
               </tbody>
@@ -583,7 +729,7 @@ export const HumanResources = () => {
               <span>Monthly checkbox grid for fast daily marking.</span>
             </div>
             <div className="row-actions">
-              <input className="form-input toolbar-select" type="month" value={attendanceMonth} onChange={(event) => setAttendanceMonth(event.target.value)} />
+              <input className="form-input toolbar-select" type="month" value={attendanceMonth} onChange={(event) => changeAttendanceMonth(event.target.value)} />
               <button className="btn btn-primary" onClick={() => openAttendanceModal()}><Plus size={18} /> Detailed Mark</button>
             </div>
           </div>

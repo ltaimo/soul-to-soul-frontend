@@ -352,6 +352,88 @@ a {
   margin-bottom: 1rem;
 }
 
+.hr-month-panel {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: var(--color-surface);
+  border: 1px solid rgba(232, 229, 223, 0.72);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.hr-month-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.hr-month-header h2 {
+  margin: 0;
+  color: var(--color-charcoal);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.hr-month-header p {
+  margin: 0.3rem 0 0;
+  color: var(--color-charcoal-light);
+  font-size: 0.88rem;
+}
+
+.hr-month-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.hr-month-controls label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.hr-month-controls span {
+  color: var(--color-charcoal-light);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.hr-month-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.hr-month-kpis > div {
+  min-height: 96px;
+  padding: 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+
+.hr-month-kpis span,
+.hr-month-kpis small {
+  display: block;
+  color: var(--color-charcoal-light);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.hr-month-kpis strong {
+  display: block;
+  margin: 0.35rem 0;
+  color: var(--color-primary-deep);
+  font-size: 1.25rem;
+}
+
+.hr-month-workers {
+  display: grid;
+  gap: 0.75rem;
+}
+
 .hr-tabs {
   display: flex;
   gap: 0.5rem;
@@ -4033,6 +4115,15 @@ tr:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .hr-month-header {
+    flex-direction: column;
+  }
+
+  .hr-month-controls,
+  .hr-month-kpis {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .sales-pdf-controls {
     grid-template-columns: 1fr;
   }
@@ -4233,6 +4324,11 @@ tr:hover {
   }
 
   .payroll-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hr-month-controls,
+  .hr-month-kpis {
     grid-template-columns: 1fr;
   }
 
