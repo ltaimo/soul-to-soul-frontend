@@ -32,7 +32,7 @@ const whatsappHref = (phone, message) => {
 const getCustomerCode = (customer) => customer.customerCode || `CUST-${String(customer.id).padStart(5, '0')}`;
 
 export const Customers = () => {
-  const { customers, createCustomer, updateCustomer, updateCustomerStatus, settings } = useContext(StoreContext);
+  const { customers, createCustomer, updateCustomer, updateCustomerStatus, adjustCustomerPoints, settings } = useContext(StoreContext);
   const { user } = useContext(AuthContext);
   const canManageCustomers = ['admin', 'manager'].includes(user?.role);
   const canCreateCustomers = ['admin', 'manager', 'cashier', 'salesperson', 'staff'].includes(user?.role);
@@ -45,6 +45,7 @@ export const Customers = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [cardCustomer, setCardCustomer] = useState(null);
   const [qrDataUrl, setQrDataUrl] = useState('');
+  const [adjustment, setAdjustment] = useState({ customer: null, points: '', reason: '' });
 
   useEffect(() => {
     let active = true;
@@ -137,6 +138,23 @@ export const Customers = () => {
       return;
     }
     setSuccessMsg(`Customer marked as ${nextStatus}.`);
+  };
+
+  const submitAdjustment = async (event) => {
+    event.preventDefault();
+    setErrorMsg('');
+    setSuccessMsg('');
+    const result = await adjustCustomerPoints(adjustment.customer.id, {
+      points: Number(adjustment.points),
+      reason: adjustment.reason,
+      idempotencyKey: `manual-${adjustment.customer.id}-${Date.now()}`,
+    });
+    if (!result.success) {
+      setErrorMsg(result.error || 'Could not adjust points.');
+      return;
+    }
+    setAdjustment({ customer: null, points: '', reason: '' });
+    setSuccessMsg('Point adjustment recorded.');
   };
 
   const copyCustomerCode = async (customer) => {
@@ -297,6 +315,7 @@ export const Customers = () => {
                 <th>Email</th>
                 <th>Tier</th>
                 <th>Points</th>
+                <th>Residual</th>
                 <th>Discount</th>
                 <th>Sales</th>
                 <th>Status</th>
@@ -313,6 +332,7 @@ export const Customers = () => {
                   <td>{customer.email || '-'}</td>
                   <td><span className="badge badge-primary">{customer.loyaltyTier}</span></td>
                   <td style={{ fontWeight: 700 }}>{customer.loyaltyPoints || 0}</td>
+                  <td>{((customer.loyaltyResidualCents || 0) / 100).toFixed(2)} MT</td>
                   <td>{customer.discountPercent || 0}%</td>
                   <td>{customer._count?.sales || 0}</td>
                   <td>
@@ -345,6 +365,9 @@ export const Customers = () => {
                         <button className="btn btn-ghost compact-btn" onClick={() => openEdit(customer)} title="Edit customer">
                           <Edit size={16} />
                         </button>
+                        <button className="btn btn-ghost compact-btn" onClick={() => setAdjustment({ customer, points: '', reason: '' })} title="Adjust points">
+                          +/- pts
+                        </button>
                         <button className="btn btn-ghost compact-btn" onClick={() => handleStatusToggle(customer)} title="Change customer status">
                           {customer.status === 'Active' ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
                         </button>
@@ -355,7 +378,7 @@ export const Customers = () => {
               ))}
               {filteredCustomers.length === 0 && (
                 <tr>
-                  <td colSpan={canManageCustomers ? 11 : 10} style={{ textAlign: 'center', padding: '2rem' }}>
+                  <td colSpan={canManageCustomers ? 12 : 11} style={{ textAlign: 'center', padding: '2rem' }}>
                     No customers found.
                   </td>
                 </tr>
@@ -402,7 +425,8 @@ export const Customers = () => {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Current Points</label>
-                  <input type="number" min="0" className="form-input" value={formData.loyaltyPoints} onChange={(event) => setFormData({ ...formData, loyaltyPoints: event.target.value })} disabled={!canManageCustomers} />
+                  <input type="number" min="0" className="form-input" value={formData.loyaltyPoints} disabled />
+                  <small className="muted-text">Use audited administrative adjustment to change points.</small>
                 </div>
               </div>
 
@@ -440,6 +464,34 @@ export const Customers = () => {
               <div className="modal-actions">
                 <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">{isEditing ? 'Save Changes' : 'Create Customer'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {adjustment.customer && (
+        <div className="modal-backdrop">
+          <div className="modal-card">
+            <div className="modal-header">
+              <div>
+                <h2>Adjust Points</h2>
+                <p>{adjustment.customer.fullName} | Balance: {adjustment.customer.loyaltyPoints || 0} pts | Value: {((adjustment.customer.loyaltyPoints || 0) * 10).toFixed(2)} MT</p>
+              </div>
+              <button className="icon-button" onClick={() => setAdjustment({ customer: null, points: '', reason: '' })}><X size={20} /></button>
+            </div>
+            <form onSubmit={submitAdjustment}>
+              <div className="form-group">
+                <label className="form-label">Points change</label>
+                <input type="number" className="form-input" value={adjustment.points} onChange={(event) => setAdjustment({ ...adjustment, points: event.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Reason</label>
+                <textarea className="form-input" rows="3" value={adjustment.reason} onChange={(event) => setAdjustment({ ...adjustment, reason: event.target.value })} required />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-ghost" onClick={() => setAdjustment({ customer: null, points: '', reason: '' })}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Record Adjustment</button>
               </div>
             </form>
           </div>

@@ -4,6 +4,28 @@ import { buildNotifications } from '../utils/notifications';
 
 export const StoreContext = createContext();
 
+const calculatePayrollTotals = (payments = []) => payments.reduce(
+  (acc, payment) => ({
+    gross: acc.gross + (Number(payment.amount) || 0),
+    paid: acc.paid + (payment.status === 'Paid' ? Number(payment.amount) || 0 : 0),
+    pending: acc.pending + (payment.status === 'Paid' ? 0 : Number(payment.amount) || 0),
+    paidCount: acc.paidCount + (payment.status === 'Paid' ? 1 : 0),
+    pendingCount: acc.pendingCount + (payment.status === 'Paid' ? 0 : 1),
+  }),
+  { gross: 0, paid: 0, pending: 0, paidCount: 0, pendingCount: 0 }
+);
+
+const updateHrSummaryPaymentTotals = (summary, previousPayments, updatedPayment) => {
+  const nextPayments = previousPayments.map((payment) => payment.id === updatedPayment.id ? updatedPayment : payment);
+  const pendingPayments = nextPayments
+    .filter((payment) => payment.status === 'Pending')
+    .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+  const paidPayments = nextPayments
+    .filter((payment) => payment.status === 'Paid')
+    .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+  return { ...summary, pendingPayments, paidPayments };
+};
+
 export const StoreProvider = ({ children }) => {
   const [products, setProducts] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -158,6 +180,10 @@ export const StoreProvider = ({ children }) => {
       setLoading(false);
     }
   }, [apiBaseUrl, canAccessAudit, canAccessHr, fetchSales, fetchWithAuth]);
+
+  const refreshInBackground = useCallback(() => {
+    fetchItems().catch((error) => console.error('Failed to reconcile data after local update', error));
+  }, [fetchItems]);
 
   useEffect(() => {
     fetchItems();
@@ -504,6 +530,22 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
+  const adjustCustomerPoints = async (id, data) => {
+    try {
+      const response = await fetchWithAuth(`${apiBaseUrl}/api/customers/${id}/points/adjust`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw result;
+      await fetchItems();
+      return { success: true, movement: result.movement };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to adjust customer points' };
+    }
+  };
+
   const createCommercialPartner = async (data) => {
     try {
       const response = await fetchWithAuth(`${apiBaseUrl}/api/commercial-partners`, {
@@ -681,7 +723,8 @@ export const StoreProvider = ({ children }) => {
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw result;
-      await fetchItems();
+      setEmployees((current) => [result.employee, ...current].sort((a, b) => a.fullName.localeCompare(b.fullName)));
+      refreshInBackground();
       return { success: true, employee: result.employee };
     } catch (e) {
       return { success: false, error: e.message || 'Failed to create employee' };
@@ -697,8 +740,9 @@ export const StoreProvider = ({ children }) => {
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw result;
-      await fetchItems();
-      return { success: true };
+      setEmployees((current) => current.map((employee) => employee.id === id ? result.employee : employee));
+      refreshInBackground();
+      return { success: true, employee: result.employee };
     } catch (e) {
       return { success: false, error: e.message || 'Failed to update employee' };
     }
@@ -713,8 +757,9 @@ export const StoreProvider = ({ children }) => {
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw result;
-      await fetchItems();
-      return { success: true };
+      setEmployees((current) => current.map((employee) => employee.id === id ? result.employee : employee));
+      refreshInBackground();
+      return { success: true, employee: result.employee };
     } catch (e) {
       return { success: false, error: e.message || 'Failed to update employee status' };
     }
@@ -729,8 +774,17 @@ export const StoreProvider = ({ children }) => {
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw result;
-      await fetchItems();
-      return { success: true };
+      const createdPayments = result.payments || [result.payment].filter(Boolean);
+      setHrPayments((current) => [...createdPayments, ...current]);
+      setPayrollSheet((current) => current ? {
+        ...current,
+        payments: [
+          ...createdPayments.filter((payment) => payment.payrollMonth === current.month && payment.type === 'Salary'),
+          ...(current.payments || []),
+        ],
+      } : current);
+      refreshInBackground();
+      return { success: true, payment: result.payment, payments: createdPayments };
     } catch (e) {
       return { success: false, error: e.message || 'Failed to create payment' };
     }
@@ -745,8 +799,15 @@ export const StoreProvider = ({ children }) => {
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw result;
-      await fetchItems();
-      return { success: true };
+      setHrPayments((current) => current.map((payment) => payment.id === id ? result.payment : payment));
+      setPayrollSheet((current) => current ? {
+        ...current,
+        payments: (current.payments || []).map((payment) => payment.id === id ? result.payment : payment),
+        totals: calculatePayrollTotals((current.payments || []).map((payment) => payment.id === id ? result.payment : payment)),
+      } : current);
+      setHrSummary((current) => current ? updateHrSummaryPaymentTotals(current, hrPayments, result.payment) : current);
+      refreshInBackground();
+      return { success: true, payment: result.payment };
     } catch (e) {
       return { success: false, error: e.message || 'Failed to update payment' };
     }
@@ -761,8 +822,12 @@ export const StoreProvider = ({ children }) => {
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw result;
-      await fetchItems();
-      return { success: true };
+      setAttendanceRecords((current) => {
+        const next = current.filter((record) => record.id !== result.attendance.id && !(record.employeeId === result.attendance.employeeId && record.date?.slice(0, 10) === result.attendance.date?.slice(0, 10)));
+        return [result.attendance, ...next].slice(0, 120);
+      });
+      refreshInBackground();
+      return { success: true, attendance: result.attendance };
     } catch (e) {
       return { success: false, error: e.message || 'Failed to save attendance' };
     }
@@ -790,7 +855,8 @@ export const StoreProvider = ({ children }) => {
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw result;
-      await fetchItems();
+      setWorkGoals((current) => [result.goal, ...current].slice(0, 200));
+      refreshInBackground();
       return { success: true, goal: result.goal };
     } catch (e) {
       return { success: false, error: e.message || 'Failed to create goal' };
@@ -806,7 +872,8 @@ export const StoreProvider = ({ children }) => {
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw result;
-      await fetchItems();
+      setWorkGoals((current) => current.map((goal) => goal.id === id ? result.goal : goal));
+      refreshInBackground();
       return { success: true, goal: result.goal };
     } catch (e) {
       return { success: false, error: e.message || 'Failed to update goal' };
@@ -857,6 +924,7 @@ export const StoreProvider = ({ children }) => {
       createCustomer,
       updateCustomer,
       updateCustomerStatus,
+      adjustCustomerPoints,
       createCommercialPartner,
       updateCommercialPartner,
       updateCommercialPartnerStatus,

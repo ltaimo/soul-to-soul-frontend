@@ -18,6 +18,8 @@ import { LanguageContext } from '../context/LanguageContext';
 import { formatCurrency } from '../utils/formatters';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const EARN_RATE_MT = 200;
+const REDEEM_RATE_MT = 10;
 
 export const SalesInsights = ({ activeFilter }) => {
   const { products, customers, commercialPartners, warehouses, warehouseStock, sales, settings, refreshData } = useContext(StoreContext);
@@ -39,6 +41,8 @@ export const SalesInsights = ({ activeFilter }) => {
   const [fulfillmentStatus, setFulfillmentStatus] = useState('Delivered');
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
   const [amountPaid, setAmountPaid] = useState('');
+  const [deliveryFee, setDeliveryFee] = useState('');
+  const [pointsToRedeem, setPointsToRedeem] = useState('');
   const [lastReceipt, setLastReceipt] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -109,7 +113,9 @@ export const SalesInsights = ({ activeFilter }) => {
       const revenue = (product?.sellingPrice || 0) * line.quantity;
       const cogs = (product?.costPrice || 0) * line.quantity;
       const pointsEarned = (product?.loyaltyPointsEarned || 0) * line.quantity;
-      const redemptionPointsCost = (product?.redemptionPointsCost || 0) * line.quantity;
+      const redemptionPointsCost = (product?.rewardEligible === false || product?.rewardActive === false)
+        ? 0
+        : ((product?.rewardPromoPoints || product?.redemptionPointsCost || Math.ceil((product?.sellingPrice || 0) / REDEEM_RATE_MT)) * line.quantity);
       return {
         ...line,
         product,
@@ -138,16 +144,22 @@ export const SalesInsights = ({ activeFilter }) => {
   const selectedCommercialPartner = activeCommercialPartners.find((partner) => partner.id === Number(selectedCommercialPartnerId));
   const loyaltyDiscountRate = selectedCustomer?.discountPercent ? selectedCustomer.discountPercent / 100 : 0;
   const discountAmount = totals.revenue * loyaltyDiscountRate;
-  const payingWithPoints = paymentMethod === 'Points';
-  const saleRevenue = payingWithPoints ? 0 : Math.max(0, totals.revenue - discountAmount);
+  const requestedPoints = Math.max(0, Number(pointsToRedeem) || 0);
+  const redeemablePoints = selectedCustomer ? Math.min(requestedPoints, selectedCustomer.loyaltyPoints || 0, totals.redemptionPointsCost || 0) : 0;
+  const pointsValue = Math.min(Math.max(0, totals.revenue - discountAmount), redeemablePoints * REDEEM_RATE_MT);
+  const deliveryAmount = Math.max(0, Number(deliveryFee) || 0);
+  const saleRevenue = Math.max(0, totals.revenue - discountAmount - pointsValue);
   const grossProfit = saleRevenue - totals.cogs;
   const margin = saleRevenue > 0 ? (grossProfit / saleRevenue) * 100 : 0;
   const hasStockIssue = cartLines.some((line) => line.hasStockIssue);
   const paidAmount = Number(amountPaid) || 0;
-  const effectivePaidAmount = paymentMethod === 'Cash' ? paidAmount : saleRevenue;
-  const changeGiven = Math.max(0, effectivePaidAmount - saleRevenue);
-  const hasPaymentIssue = paymentMethod === 'Cash' && cart.length > 0 && paidAmount < saleRevenue;
-  const hasPointsIssue = payingWithPoints && (!selectedCustomer || totals.redemptionPointsCost <= 0 || (selectedCustomer.loyaltyPoints || 0) < totals.redemptionPointsCost);
+  const payableTotal = saleRevenue + deliveryAmount;
+  const effectivePaidAmount = paymentMethod === 'Cash' ? paidAmount : payableTotal;
+  const changeGiven = Math.max(0, effectivePaidAmount - payableTotal);
+  const projectedPointsEarned = selectedCustomer ? Math.floor(((selectedCustomer.loyaltyResidualCents || 0) / 100 + saleRevenue) / EARN_RATE_MT) : 0;
+  const projectedResidual = selectedCustomer ? (((selectedCustomer.loyaltyResidualCents || 0) / 100 + saleRevenue) % EARN_RATE_MT) : 0;
+  const hasPaymentIssue = paymentMethod === 'Cash' && cart.length > 0 && paidAmount < payableTotal;
+  const hasPointsIssue = requestedPoints > 0 && (!selectedCustomer || totals.redemptionPointsCost <= 0 || redeemablePoints < requestedPoints);
 
   const displayedSales = useMemo(() => {
     if (activeFilter === 'online_orders') {
@@ -351,7 +363,10 @@ export const SalesInsights = ({ activeFilter }) => {
           saveCustomer: saveCustomer && !selectedCustomerId,
           paymentMethod,
           amountPaid: effectivePaidAmount,
-          redeemPoints: payingWithPoints,
+          deliveryFee: deliveryAmount,
+          pointsToRedeem: redeemablePoints,
+          redeemPoints: redeemablePoints > 0,
+          idempotencyKey: (window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`),
           warehouseId: fulfillmentWarehouseId,
           commercialPartnerId: selectedCommercialPartnerId ? Number(selectedCommercialPartnerId) : undefined,
           channel: saleChannel,
@@ -380,6 +395,8 @@ export const SalesInsights = ({ activeFilter }) => {
       setOrderReference('');
       setFulfillmentStatus('Delivered');
       setAmountPaid('');
+      setDeliveryFee('');
+      setPointsToRedeem('');
       setSelectedWarehouseId('');
       await Promise.all([refreshData(), fetchSales()]);
     } catch (err) {
@@ -570,7 +587,7 @@ export const SalesInsights = ({ activeFilter }) => {
                   <div className={`cart-line ${line.hasStockIssue ? 'cart-line-error' : ''}`} key={line.productId}>
                     <div className="cart-line-main">
                       <strong>{line.product?.name || 'Unknown product'}</strong>
-                      <span>{formatCurrency(line.product?.sellingPrice || 0, settings)} - Available: {line.available} - Earn {line.pointsEarned} pts - Redeem {line.redemptionPointsCost} pts</span>
+                      <span>{formatCurrency(line.product?.sellingPrice || 0, settings)} - Available: {line.available} - Redeem {line.redemptionPointsCost} pts</span>
                     </div>
                     <div className="cart-qty">
                       <button type="button" onClick={() => updateQty(line.productId, line.quantity - 1)}><Minus size={14} /></button>
@@ -591,8 +608,9 @@ export const SalesInsights = ({ activeFilter }) => {
               <div><span>{t.margin}</span><strong>{margin.toFixed(1)}%</strong></div>
             </div>
             <div className={`change-box ${hasPointsIssue ? 'change-box-error' : ''}`}>
-              <span>{payingWithPoints ? 'Points needed' : 'Points to earn'}</span>
-              <strong>{payingWithPoints ? totals.redemptionPointsCost : totals.pointsEarned} pts</strong>
+              <span>Loyalty summary</span>
+              <strong>{redeemablePoints} pts used | {projectedPointsEarned} pts to earn</strong>
+              <small>Residual after sale: {projectedResidual.toFixed(2)} MT. Points never apply to delivery.</small>
             </div>
             {discountAmount > 0 && (
               <div className="change-box">
@@ -600,6 +618,32 @@ export const SalesInsights = ({ activeFilter }) => {
                 <strong>-{formatCurrency(discountAmount, settings)}</strong>
               </div>
             )}
+
+            <div className="payment-grid">
+              <div className="form-group">
+                <label className="form-label">Points to redeem</label>
+                <input
+                  type="number"
+                  min="0"
+                  max={selectedCustomer ? Math.min(selectedCustomer.loyaltyPoints || 0, totals.redemptionPointsCost || 0) : 0}
+                  className="form-input"
+                  value={pointsToRedeem}
+                  onChange={(event) => setPointsToRedeem(event.target.value)}
+                  disabled={!selectedCustomer}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Delivery Fee</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="form-input"
+                  value={deliveryFee}
+                  onChange={(event) => setDeliveryFee(event.target.value)}
+                />
+              </div>
+            </div>
 
             <div className="payment-grid">
               <div className="form-group">
@@ -613,7 +657,7 @@ export const SalesInsights = ({ activeFilter }) => {
                 }}
               >
                 {paymentMethods.map((method) => <option key={method} value={method}>{method}</option>)}
-                <option value="Points">Points</option>
+                <option value="Mixed">Points + Cash</option>
               </select>
               </div>
               <div className="form-group">
@@ -623,11 +667,17 @@ export const SalesInsights = ({ activeFilter }) => {
                   min="0"
                   step="0.01"
                   className="form-input"
-                  value={paymentMethod === 'Cash' ? amountPaid : saleRevenue.toFixed(settings?.decimalFormatting ?? 2)}
+                  value={paymentMethod === 'Cash' ? amountPaid : payableTotal.toFixed(settings?.decimalFormatting ?? 2)}
                   onChange={(event) => setAmountPaid(event.target.value)}
                   disabled={paymentMethod !== 'Cash'}
                 />
               </div>
+            </div>
+
+            <div className="change-box">
+              <span>Before confirmation</span>
+              <strong>{formatCurrency(payableTotal, settings)} to pay</strong>
+              <small>Products: {formatCurrency(totals.revenue, settings)} | Discount: {formatCurrency(discountAmount, settings)} | Points: {redeemablePoints} ({formatCurrency(pointsValue, settings)}) | Delivery: {formatCurrency(deliveryAmount, settings)}</small>
             </div>
 
             <div className={`change-box ${hasPaymentIssue ? 'change-box-error' : ''}`}>

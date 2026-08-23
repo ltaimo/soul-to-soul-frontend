@@ -16,6 +16,13 @@ const initialFormData = {
   minStock: 0,
   loyaltyPointsEarned: 0,
   redemptionPointsCost: 0,
+  rewardEligible: true,
+  allowPointsCash: true,
+  rewardMaxQuantity: '',
+  rewardPromoStart: '',
+  rewardPromoEnd: '',
+  rewardActive: true,
+  rewardPromoPoints: '',
   initialStock: 0,
   status: 'Active',
   brand: '',
@@ -71,6 +78,13 @@ export const Products = () => {
       minStock: prod.minStock || 0,
       loyaltyPointsEarned: prod.loyaltyPointsEarned || 0,
       redemptionPointsCost: prod.redemptionPointsCost || 0,
+      rewardEligible: prod.rewardEligible !== false,
+      allowPointsCash: prod.allowPointsCash !== false,
+      rewardMaxQuantity: prod.rewardMaxQuantity || '',
+      rewardPromoStart: prod.rewardPromoStart ? prod.rewardPromoStart.slice(0, 10) : '',
+      rewardPromoEnd: prod.rewardPromoEnd ? prod.rewardPromoEnd.slice(0, 10) : '',
+      rewardActive: prod.rewardActive !== false,
+      rewardPromoPoints: prod.rewardPromoPoints || '',
       initialStock: 0, // Cannot edit initial stock
       status: prod.status,
       brand: prod.brand || '',
@@ -109,6 +123,9 @@ export const Products = () => {
       minStock: product.minStock,
       loyaltyPointsEarned: product.loyaltyPointsEarned || 0,
       redemptionPointsCost: product.redemptionPointsCost || 0,
+      rewardEligible: product.rewardEligible ? 'yes' : 'no',
+      allowPointsCash: product.allowPointsCash ? 'yes' : 'no',
+      rewardPromoPoints: product.rewardPromoPoints || '',
       barcode: product.barcode || '',
       description: product.description || '',
       imageUrl: product.imageUrl || '',
@@ -226,6 +243,8 @@ export const Products = () => {
                     <td>
                       <span className="table-muted">Earn {item.loyaltyPointsEarned || 0}</span>
                       <span className="table-muted">Redeem {item.redemptionPointsCost || 0}</span>
+                      {!item.rewardEligible && <span className="table-muted">Not reward eligible</span>}
+                      {item.rewardPromoPoints ? <span className="badge badge-success">Promo {item.rewardPromoPoints}</span> : null}
                     </td>
                     <td>
                       {canManageProducts ? (
@@ -346,12 +365,47 @@ export const Products = () => {
                 </div>
 
                 <div className="form-group">
-                  <label>Loyalty Points Earned</label>
+                  <label>Loyalty Points Earned (legacy)</label>
                   <input type="number" min="0" className="form-input" value={formData.loyaltyPointsEarned} onChange={e => setFormData({...formData, loyaltyPointsEarned: e.target.value})} />
                 </div>
                 <div className="form-group">
-                  <label>Points Needed to Redeem</label>
+                  <label>Admin Points Needed to Redeem</label>
                   <input type="number" min="0" className="form-input" value={formData.redemptionPointsCost} onChange={e => setFormData({...formData, redemptionPointsCost: e.target.value})} />
+                </div>
+
+                <div className="form-group">
+                  <label className="checkbox-line">
+                    <input type="checkbox" checked={formData.rewardEligible} onChange={e => setFormData({...formData, rewardEligible: e.target.checked})} />
+                    Eligible for points redemption
+                  </label>
+                </div>
+                <div className="form-group">
+                  <label className="checkbox-line">
+                    <input type="checkbox" checked={formData.allowPointsCash} onChange={e => setFormData({...formData, allowPointsCash: e.target.checked})} />
+                    Allow points + cash
+                  </label>
+                </div>
+                <div className="form-group">
+                  <label>Reward Max Quantity</label>
+                  <input type="number" min="0" className="form-input" value={formData.rewardMaxQuantity} onChange={e => setFormData({...formData, rewardMaxQuantity: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label>Promotional Points</label>
+                  <input type="number" min="0" className="form-input" value={formData.rewardPromoPoints} onChange={e => setFormData({...formData, rewardPromoPoints: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label>Promotion Start</label>
+                  <input type="date" className="form-input" value={formData.rewardPromoStart} onChange={e => setFormData({...formData, rewardPromoStart: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label>Promotion End</label>
+                  <input type="date" className="form-input" value={formData.rewardPromoEnd} onChange={e => setFormData({...formData, rewardPromoEnd: e.target.value})} />
+                </div>
+                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="checkbox-line">
+                    <input type="checkbox" checked={formData.rewardActive} onChange={e => setFormData({...formData, rewardActive: e.target.checked})} />
+                    Reward active
+                  </label>
                 </div>
 
                 {!isEditing && (
