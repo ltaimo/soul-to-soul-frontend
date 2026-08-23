@@ -1997,6 +1997,32 @@ tr:hover {
   gap: 2rem;
 }
 
+.sales-pdf-controls {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(140px, auto);
+  gap: 0.85rem;
+  align-items: end;
+}
+
+.sales-pdf-controls label {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.sales-pdf-controls label span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-charcoal);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.sales-pdf-controls select,
+.sales-pdf-controls input {
+  width: 100%;
+}
+
 .section-heading {
   display: flex;
   align-items: center;
@@ -3986,6 +4012,10 @@ tr:hover {
 
   .seller-ranking-periods {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sales-pdf-controls {
+    grid-template-columns: 1fr;
   }
 
   .stats-grid {

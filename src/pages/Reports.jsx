@@ -1,14 +1,47 @@
 import React, { useState, useContext } from 'react';
-import { Download, FileSpreadsheet } from 'lucide-react';
+import { Calendar, Download, FileSpreadsheet, FileText, Printer } from 'lucide-react';
 import { StoreContext } from '../context/StoreContext';
 import { AuthContext } from '../context/AuthContext';
 import { formatCurrency, formatPercentage } from '../utils/formatters';
 import { downloadCsv } from '../utils/csv';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const SALES_PERIODS = [
+  { value: 'today', label: 'Hoje' },
+  { value: 'yesterday', label: 'Ontem' },
+  { value: 'this_week', label: 'Esta semana' },
+  { value: 'last_week', label: 'Semana passada' },
+  { value: 'this_month', label: 'Este mes' },
+  { value: 'last_month', label: 'Mes passado' },
+  { value: 'this_year', label: 'Este ano' },
+  { value: 'last_year', label: 'Ano passado' },
+  { value: 'all', label: 'Todas as vendas' },
+  { value: 'custom', label: 'Periodo personalizado' },
+];
+
+const escapeHtml = (value) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#039;');
+
+const formatDateTime = (date) => {
+  if (!date) return '';
+  return new Date(date).toLocaleString('pt-MZ', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+};
+
 export const Reports = () => {
   const { settings } = useContext(StoreContext);
   const { token, logout } = useContext(AuthContext);
   const [downloading, setDownloading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [salesPeriod, setSalesPeriod] = useState('today');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
 
   const downloadExcel = async (reportType) => {
     setDownloading(true);
@@ -19,7 +52,7 @@ export const Reports = () => {
       let filename = `${reportType}_Report.csv`;
 
       if (reportType === 'Sales') {
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/sales`, fetchOptions);
+        const res = await fetch(`${API_BASE}/api/sales`, fetchOptions);
         if (res.status === 401) return logout();
         const raw = await res.json();
         
@@ -68,7 +101,7 @@ export const Reports = () => {
       }
 
       if (reportType === 'Inventory') {
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/products`, fetchOptions);
+        const res = await fetch(`${API_BASE}/api/inventory/products`, fetchOptions);
         if (res.status === 401) return logout();
         const raw = await res.json();
         let totalVal = 0;
@@ -101,7 +134,7 @@ export const Reports = () => {
       }
 
       if (reportType === 'Warehouse Inventory') {
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/warehouse-stock`, fetchOptions);
+        const res = await fetch(`${API_BASE}/api/inventory/warehouse-stock`, fetchOptions);
         if (res.status === 401) return logout();
         const raw = await res.json();
         let totalVal = 0;
@@ -141,7 +174,7 @@ export const Reports = () => {
       }
 
       if (reportType === 'Stock Transfers') {
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/inventory/transfers`, fetchOptions);
+        const res = await fetch(`${API_BASE}/api/inventory/transfers`, fetchOptions);
         if (res.status === 401) return logout();
         const raw = await res.json();
         data = raw.flatMap((transfer) => (
@@ -164,7 +197,7 @@ export const Reports = () => {
       }
 
       if (reportType === 'HR Payments') {
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/hr/payments`, fetchOptions);
+        const res = await fetch(`${API_BASE}/api/hr/payments`, fetchOptions);
         if (res.status === 401) return logout();
         const raw = await res.json();
         data = raw.map((payment) => ({
@@ -182,7 +215,7 @@ export const Reports = () => {
       }
 
       if (reportType === 'Sellers & Resellers') {
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/commercial-partners`, fetchOptions);
+        const res = await fetch(`${API_BASE}/api/commercial-partners`, fetchOptions);
         if (res.status === 401) return logout();
         const raw = await res.json();
         data = raw.map((partner) => ({
@@ -198,7 +231,7 @@ export const Reports = () => {
       }
 
       if (reportType === 'Fund Requests') {
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/fund-requests`, fetchOptions);
+        const res = await fetch(`${API_BASE}/api/fund-requests`, fetchOptions);
         if (res.status === 401) return logout();
         const raw = await res.json();
         data = raw.map((request) => ({
@@ -222,7 +255,7 @@ export const Reports = () => {
       }
 
       if (reportType === 'Audit Logs') {
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/audit-logs?take=500`, fetchOptions);
+        const res = await fetch(`${API_BASE}/api/audit-logs?take=500`, fetchOptions);
         if (res.status === 401) return logout();
         const raw = await res.json();
         data = raw.map((log) => ({
@@ -254,11 +287,193 @@ export const Reports = () => {
     setDownloading(false);
   };
 
+  const generateSalesPdf = async () => {
+    if (salesPeriod === 'custom' && (!customStart || !customEnd)) {
+      alert('Escolha a data inicial e final para gerar o PDF.');
+      return;
+    }
+
+    setPdfLoading(true);
+    try {
+      const params = new URLSearchParams({ period: salesPeriod, _: String(Date.now()) });
+      if (salesPeriod === 'custom') {
+        params.set('start', customStart);
+        params.set('end', customEnd);
+      }
+
+      const res = await fetch(`${API_BASE}/api/sales/report?${params.toString()}`, {
+        cache: 'no-store',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache',
+        },
+      });
+      if (res.status === 401) return logout();
+      if (!res.ok) throw new Error('Failed to load sales report.');
+
+      const report = await res.json();
+      const selectedPeriod = SALES_PERIODS.find((period) => period.value === salesPeriod);
+      const periodLabel = selectedPeriod?.label || 'Periodo';
+      const rangeLabel = report.period?.from && report.period?.to
+        ? `${formatDateTime(report.period.from)} - ${formatDateTime(report.period.to)}`
+        : 'Todas as vendas registadas';
+      const rows = report.sales || [];
+      const summary = report.summary || {};
+
+      const saleRows = rows.map((sale) => {
+        const items = (sale.items || []).map((item) => {
+          const productName = item.product?.name || `Produto #${item.productId}`;
+          const lineTotal = item.lineTotalCents ? item.lineTotalCents / 100 : (item.unitSellingPrice || 0) * item.quantity;
+          return `${escapeHtml(productName)} (${item.quantity} x ${formatCurrency(item.unitSellingPrice || 0, settings)} = ${formatCurrency(lineTotal, settings)})`;
+        }).join('<br>');
+        const payments = (sale.payments || []).map((payment) =>
+          `${escapeHtml(payment.method)}: ${formatCurrency((payment.amountCents || 0) / 100, settings)}`
+        ).join('<br>');
+
+        return `
+          <tr>
+            <td>#${sale.id}</td>
+            <td>${escapeHtml(formatDateTime(sale.date))}</td>
+            <td>${escapeHtml(sale.customerName || 'Cliente Balcao')}</td>
+            <td>${escapeHtml(sale.sellerName || 'Sem vendedor')}</td>
+            <td>${escapeHtml(sale.warehouseName || sale.warehouse?.name || '')}</td>
+            <td>${escapeHtml(sale.channel || '')}</td>
+            <td>${items || '-'}</td>
+            <td>${payments || escapeHtml(sale.paymentMethod || '')}</td>
+            <td>${escapeHtml(sale.status || sale.paymentStatus || '')}</td>
+            <td class="num">${formatCurrency(sale.totalRevenue || 0, settings)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const html = `
+        <!doctype html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <title>Relatorio de vendas - ${escapeHtml(periodLabel)}</title>
+            <style>
+              @page { size: A4 landscape; margin: 12mm; }
+              * { box-sizing: border-box; }
+              body { font-family: Arial, sans-serif; color: #222; margin: 0; }
+              header { display: flex; justify-content: space-between; gap: 24px; border-bottom: 2px solid #6B8E7E; padding-bottom: 12px; margin-bottom: 16px; }
+              h1 { margin: 0 0 6px; font-size: 22px; }
+              p { margin: 0; color: #666; font-size: 12px; }
+              .summary { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 16px; }
+              .metric { border: 1px solid #ddd; border-radius: 6px; padding: 8px; }
+              .metric span { display: block; color: #666; font-size: 10px; text-transform: uppercase; }
+              .metric strong { display: block; margin-top: 4px; font-size: 14px; }
+              table { width: 100%; border-collapse: collapse; font-size: 10px; }
+              th { background: #f3f0ea; color: #333; text-align: left; }
+              th, td { border-bottom: 1px solid #ddd; padding: 6px; vertical-align: top; }
+              .num { text-align: right; white-space: nowrap; }
+              .actions { position: sticky; top: 0; display: flex; justify-content: flex-end; gap: 8px; padding: 10px 0; background: white; }
+              button { border: 0; border-radius: 6px; padding: 8px 12px; background: #6B8E7E; color: white; cursor: pointer; }
+              @media print { .actions { display: none; } }
+            </style>
+          </head>
+          <body>
+            <div class="actions"><button onclick="window.print()">Imprimir / Guardar PDF</button></div>
+            <header>
+              <div>
+                <h1>Relatorio de vendas</h1>
+                <p>${escapeHtml(periodLabel)} | ${escapeHtml(rangeLabel)}</p>
+              </div>
+              <div>
+                <p>Soul2Soul</p>
+                <p>Gerado em ${escapeHtml(formatDateTime(new Date()))}</p>
+              </div>
+            </header>
+            <section class="summary">
+              <div class="metric"><span>Vendas</span><strong>${summary.saleCount || 0}</strong></div>
+              <div class="metric"><span>Vendas pagas</span><strong>${summary.paidSaleCount || 0}</strong></div>
+              <div class="metric"><span>Unidades</span><strong>${summary.units || 0}</strong></div>
+              <div class="metric"><span>Receita</span><strong>${formatCurrency(summary.totalRevenue || 0, settings)}</strong></div>
+              <div class="metric"><span>Lucro bruto</span><strong>${formatCurrency(summary.grossProfit || 0, settings)}</strong></div>
+              <div class="metric"><span>Ticket medio</span><strong>${formatCurrency(summary.averageTicket || 0, settings)}</strong></div>
+            </section>
+            <table>
+              <thead>
+                <tr>
+                  <th>Venda</th>
+                  <th>Data</th>
+                  <th>Cliente</th>
+                  <th>Vendedor</th>
+                  <th>Armazem</th>
+                  <th>Canal</th>
+                  <th>Produtos</th>
+                  <th>Pagamentos</th>
+                  <th>Status</th>
+                  <th class="num">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${saleRows || '<tr><td colspan="10">Sem vendas no periodo selecionado.</td></tr>'}
+              </tbody>
+            </table>
+          </body>
+        </html>
+      `;
+
+      const printWindow = window.open('', '_blank', 'width=1200,height=800');
+      if (!printWindow) {
+        alert('Permita pop-ups para abrir o PDF.');
+        return;
+      }
+      printWindow.document.open();
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => printWindow.print(), 500);
+    } catch (e) {
+      console.error(e);
+      alert('Nao foi possivel gerar o PDF de vendas.');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   return (
     <div>
       <h1 className="page-title">Export & Intelligence Reports</h1>
       
       <div className="reports-grid">
+        <div className="card">
+          <h3 style={{ marginBottom: '1rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FileText className="text-primary" size={24} /> PDF de vendas por periodo
+          </h3>
+          <p style={{ color: 'var(--color-charcoal-light)', marginBottom: '1.25rem', fontSize: '0.875rem' }}>
+            Gere um PDF com resumo e lista completa das vendas do dia, semana, mes, ano ou todo o historico.
+          </p>
+
+          <div className="sales-pdf-controls">
+            <label>
+              <span><Calendar size={15} /> Periodo</span>
+              <select value={salesPeriod} onChange={(event) => setSalesPeriod(event.target.value)}>
+                {SALES_PERIODS.map((period) => (
+                  <option key={period.value} value={period.value}>{period.label}</option>
+                ))}
+              </select>
+            </label>
+            {salesPeriod === 'custom' && (
+              <>
+                <label>
+                  <span>Data inicial</span>
+                  <input type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} />
+                </label>
+                <label>
+                  <span>Data final</span>
+                  <input type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} />
+                </label>
+              </>
+            )}
+            <button className="btn btn-primary" type="button" onClick={generateSalesPdf} disabled={pdfLoading}>
+              <Printer size={18} />
+              {pdfLoading ? 'A gerar...' : 'Gerar PDF'}
+            </button>
+          </div>
+        </div>
+
         <div className="card">
           <h3 style={{ marginBottom: '1.5rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <FileSpreadsheet className="text-primary" size={24} /> Generate Excel-compatible CSV Reports
