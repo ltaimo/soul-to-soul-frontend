@@ -143,8 +143,8 @@ export const CommercialPartners = () => {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title" style={{ marginBottom: '0.35rem' }}>Sellers & Resellers</h1>
-          <p className="page-subtitle">Manage commercial partners, commissions, contacts and their link to POS sales.</p>
+          <h1 className="page-title" style={{ marginBottom: '0.35rem' }}>Revendedores</h1>
+          <p className="page-subtitle">Gerir revendedores, comissoes, contactos e ligacao as vendas no caixa.</p>
         </div>
         <button className="btn btn-primary" onClick={openCreate}>
           <Plus size={18} /> Add Partner

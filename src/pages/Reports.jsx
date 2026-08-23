@@ -329,6 +329,17 @@ export const Reports = () => {
       const rangeLabel = report.period?.from && report.period?.to
         ? `${formatDateTime(report.period.from)} - ${formatDateTime(report.period.to)}`
         : 'Todas as vendas registadas';
+      const companyName = settings?.companyName || 'Soul2Soul';
+      const companyLogo = settings?.companyLogo || `${window.location.origin}/logo.png`;
+      const companyLogoUrl = companyLogo.startsWith('http')
+        ? companyLogo
+        : new URL(companyLogo, window.location.origin).href;
+      const companyContacts = [
+        settings?.companyPhone,
+        settings?.companyWhatsApp ? `WhatsApp: ${settings.companyWhatsApp}` : '',
+        settings?.companyEmail,
+        settings?.companyWebsite,
+      ].filter(Boolean);
       const rows = report.sales || [];
       const summary = report.summary || {};
       const sellerRanking = buildSellerRanking(rows);
@@ -381,8 +392,14 @@ export const Reports = () => {
               * { box-sizing: border-box; }
               body { font-family: Arial, sans-serif; color: #222; margin: 0; }
               header { display: flex; justify-content: space-between; gap: 24px; border-bottom: 2px solid #6B8E7E; padding-bottom: 12px; margin-bottom: 16px; }
-              h1 { margin: 0 0 6px; font-size: 22px; }
+              h1 { margin: 0 0 6px; font-size: 22px; color: #2f5748; }
               p { margin: 0; color: #666; font-size: 12px; }
+              .brand { display: flex; align-items: center; gap: 12px; min-width: 280px; }
+              .brand-logo { width: 68px; height: 68px; object-fit: contain; border: 1px solid #e3dfd6; border-radius: 8px; padding: 6px; }
+              .brand h2 { margin: 0 0 4px; color: #2f5748; font-size: 18px; }
+              .brand p { line-height: 1.35; }
+              .document-meta { text-align: right; min-width: 220px; }
+              .document-meta strong { display: block; color: #2f5748; font-size: 13px; margin-bottom: 4px; }
               .summary { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 16px; }
               .metric { border: 1px solid #ddd; border-radius: 6px; padding: 8px; }
               .metric span { display: block; color: #666; font-size: 10px; text-transform: uppercase; }
@@ -399,18 +416,25 @@ export const Reports = () => {
               .top-seller-row td { background: #eef5ef; font-weight: 700; }
               .actions { position: sticky; top: 0; display: flex; justify-content: flex-end; gap: 8px; padding: 10px 0; background: white; }
               button { border: 0; border-radius: 6px; padding: 8px 12px; background: #6B8E7E; color: white; cursor: pointer; }
+              footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e3dfd6; color: #777; font-size: 10px; text-align: center; }
               @media print { .actions { display: none; } }
             </style>
           </head>
           <body>
             <div class="actions"><button onclick="window.print()">Imprimir / Guardar PDF</button></div>
             <header>
-              <div>
-                <h1>Relatorio de vendas</h1>
-                <p>${escapeHtml(periodLabel)} | ${escapeHtml(rangeLabel)}</p>
+              <div class="brand">
+                <img class="brand-logo" src="${escapeHtml(companyLogoUrl)}" alt="${escapeHtml(companyName)}" />
+                <div>
+                  <h2>${escapeHtml(companyName)}</h2>
+                  <p>${escapeHtml(settings?.companyAddress || 'Relatorio comercial oficial')}</p>
+                  <p>${escapeHtml(companyContacts.join(' | '))}</p>
+                </div>
               </div>
-              <div>
-                <p>Soul2Soul</p>
+              <div class="document-meta">
+                <strong>Relatorio de vendas</strong>
+                <p>${escapeHtml(periodLabel)}</p>
+                <p>${escapeHtml(rangeLabel)}</p>
                 <p>Gerado em ${escapeHtml(formatDateTime(new Date()))}</p>
               </div>
             </header>
@@ -454,6 +478,7 @@ export const Reports = () => {
                 ${saleRows || '<tr><td colspan="10">Sem vendas no periodo selecionado.</td></tr>'}
               </tbody>
             </table>
+            <footer>Documento gerado pelo sistema ${escapeHtml(companyName)}. Use este relatorio para conferencia interna de vendas, pagamentos e desempenho dos revendedores.</footer>
           </body>
         </html>
       `;
@@ -552,7 +577,7 @@ export const Reports = () => {
             </button>
 
             <button className="btn" onClick={() => downloadExcel('Sellers & Resellers')} disabled={downloading} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem' }}>
-              <span style={{ fontWeight: 600 }}>Sellers, Resellers & Commissions Report</span>
+              <span style={{ fontWeight: 600 }}>Revendedores e Comissoes</span>
               <Download size={18} />
             </button>
 
