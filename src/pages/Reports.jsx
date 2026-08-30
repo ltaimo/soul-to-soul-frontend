@@ -85,6 +85,8 @@ export const Reports = () => {
             'Seller / Reseller': s.sellerName || '',
             'Seller Type': s.sellerType || '',
             'Commission': formatCurrency(s.commissionAmount || 0, settings),
+            'Direct Discount': formatCurrency((s.directDiscountCents || 0) / 100, settings),
+            'Direct Discount Reason': s.directDiscountReason || '',
             'Total Revenue': formatCurrency(s.totalRevenue, settings),
             'Total COGS': formatCurrency(s.totalCogs, settings),
             'Gross Profit': formatCurrency(s.totalRevenue - s.totalCogs, settings),
@@ -105,6 +107,8 @@ export const Reports = () => {
           'Seller / Reseller': '',
           'Seller Type': '',
           'Commission': '',
+          'Direct Discount': '',
+          'Direct Discount Reason': '',
           'Total Revenue': formatCurrency(sumRev, settings),
           'Total COGS': formatCurrency(sumCogs, settings),
           'Gross Profit': formatCurrency(sumRev - sumCogs, settings),
@@ -364,6 +368,7 @@ export const Reports = () => {
         const payments = (sale.payments || []).map((payment) =>
           `${escapeHtml(payment.method)}: ${formatCurrency((payment.amountCents || 0) / 100, settings)}`
         ).join('<br>');
+        const directDiscount = (sale.directDiscountCents || 0) / 100;
 
         return `
           <tr>
@@ -376,6 +381,8 @@ export const Reports = () => {
             <td>${items || '-'}</td>
             <td>${payments || escapeHtml(sale.paymentMethod || '')}</td>
             <td>${escapeHtml(sale.status || sale.paymentStatus || '')}</td>
+            <td class="num">${directDiscount > 0 ? formatCurrency(directDiscount, settings) : '-'}</td>
+            <td>${escapeHtml(sale.directDiscountReason || '')}</td>
             <td class="num">${formatCurrency(sale.totalRevenue || 0, settings)}</td>
           </tr>
         `;
@@ -471,11 +478,13 @@ export const Reports = () => {
                   <th>Produtos</th>
                   <th>Pagamentos</th>
                   <th>Status</th>
+                  <th class="num">Desc. directo</th>
+                  <th>Justificacao interna</th>
                   <th class="num">Total</th>
                 </tr>
               </thead>
               <tbody>
-                ${saleRows || '<tr><td colspan="10">Sem vendas no periodo selecionado.</td></tr>'}
+                ${saleRows || '<tr><td colspan="12">Sem vendas no periodo selecionado.</td></tr>'}
               </tbody>
             </table>
             <footer>Documento gerado pelo sistema ${escapeHtml(companyName)}. Use este relatorio para conferencia interna de vendas, pagamentos e desempenho dos revendedores.</footer>

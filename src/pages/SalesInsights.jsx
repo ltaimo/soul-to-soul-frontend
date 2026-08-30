@@ -42,6 +42,8 @@ export const SalesInsights = ({ activeFilter }) => {
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
   const [amountPaid, setAmountPaid] = useState('');
   const [deliveryFee, setDeliveryFee] = useState('');
+  const [directDiscount, setDirectDiscount] = useState('');
+  const [directDiscountReason, setDirectDiscountReason] = useState('');
   const [pointsToRedeem, setPointsToRedeem] = useState('');
   const [lastReceipt, setLastReceipt] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
@@ -144,11 +146,13 @@ export const SalesInsights = ({ activeFilter }) => {
   const selectedCommercialPartner = activeCommercialPartners.find((partner) => partner.id === Number(selectedCommercialPartnerId));
   const loyaltyDiscountRate = selectedCustomer?.discountPercent ? selectedCustomer.discountPercent / 100 : 0;
   const discountAmount = totals.revenue * loyaltyDiscountRate;
+  const directDiscountInput = Math.max(0, Number(directDiscount) || 0);
+  const directDiscountAmount = Math.min(Math.max(0, totals.revenue - discountAmount), directDiscountInput);
   const requestedPoints = Math.max(0, Number(pointsToRedeem) || 0);
   const redeemablePoints = selectedCustomer ? Math.min(requestedPoints, selectedCustomer.loyaltyPoints || 0, totals.redemptionPointsCost || 0) : 0;
-  const pointsValue = Math.min(Math.max(0, totals.revenue - discountAmount), redeemablePoints * REDEEM_RATE_MT);
+  const pointsValue = Math.min(Math.max(0, totals.revenue - discountAmount - directDiscountAmount), redeemablePoints * REDEEM_RATE_MT);
   const deliveryAmount = Math.max(0, Number(deliveryFee) || 0);
-  const saleRevenue = Math.max(0, totals.revenue - discountAmount - pointsValue);
+  const saleRevenue = Math.max(0, totals.revenue - discountAmount - directDiscountAmount - pointsValue);
   const grossProfit = saleRevenue - totals.cogs;
   const margin = saleRevenue > 0 ? (grossProfit / saleRevenue) * 100 : 0;
   const hasStockIssue = cartLines.some((line) => line.hasStockIssue);
@@ -160,6 +164,7 @@ export const SalesInsights = ({ activeFilter }) => {
   const projectedResidual = selectedCustomer ? (((selectedCustomer.loyaltyResidualCents || 0) / 100 + saleRevenue) % EARN_RATE_MT) : 0;
   const hasPaymentIssue = paymentMethod === 'Cash' && cart.length > 0 && paidAmount < payableTotal;
   const hasPointsIssue = requestedPoints > 0 && (!selectedCustomer || totals.redemptionPointsCost <= 0 || redeemablePoints < requestedPoints);
+  const hasDirectDiscountIssue = directDiscountInput > 0 && !directDiscountReason.trim();
 
   const displayedSales = useMemo(() => {
     if (activeFilter === 'online_orders') {
@@ -243,6 +248,8 @@ export const SalesInsights = ({ activeFilter }) => {
     total: item.quantity * item.unitSellingPrice,
   })) || [];
 
+  const directDiscountValue = (sale) => Math.max(0, Number(sale?.directDiscountCents || 0) / 100);
+
   const buildLoyaltyReceiptMessage = (sale) => {
     const earned = Number(sale?.pointsEarned) || 0;
     const redeemed = Number(sale?.pointsRedeemed) || 0;
@@ -278,13 +285,14 @@ export const SalesInsights = ({ activeFilter }) => {
       '',
       lines,
       '',
+      directDiscountValue(sale) > 0 ? `Desconto: -${formatCurrency(directDiscountValue(sale), settings)}` : '',
       `Total: ${formatCurrency(sale.totalRevenue, settings)}`,
       `${t.paymentMethod}: ${sale.paymentMethod}`,
       `${t.amountPaid}: ${formatCurrency(sale.amountPaid, settings)}`,
       `${t.change}: ${formatCurrency(sale.changeGiven, settings)}`,
       '',
       buildLoyaltyReceiptMessage(sale),
-    ].join('\n');
+    ].filter((line) => line !== '').join('\n');
   };
 
   const printReceipt = (sale) => {
@@ -302,6 +310,7 @@ export const SalesInsights = ({ activeFilter }) => {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+    const receiptDiscount = directDiscountValue(sale);
     const win = window.open('', '_blank', 'width=420,height=720');
     win.document.write(`
       <html>
@@ -333,6 +342,7 @@ export const SalesInsights = ({ activeFilter }) => {
             <thead><tr><th>Item</th><th>Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Total</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
+          ${receiptDiscount > 0 ? `<div class="total"><span>Desconto</span><span>-${formatCurrency(receiptDiscount, settings)}</span></div>` : ''}
           <div class="total"><span>Total</span><span>${formatCurrency(sale.totalRevenue, settings)}</span></div>
           <div class="total"><span>Paid</span><span>${formatCurrency(sale.amountPaid, settings)}</span></div>
           <div class="total"><span>Change</span><span>${formatCurrency(sale.changeGiven, settings)}</span></div>
@@ -386,6 +396,10 @@ export const SalesInsights = ({ activeFilter }) => {
       setErrorMsg('Customer does not have enough points, or selected products are not configured for redemption.');
       return;
     }
+    if (hasDirectDiscountIssue) {
+      setErrorMsg('Justifique o desconto directo para controlo interno.');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -402,6 +416,8 @@ export const SalesInsights = ({ activeFilter }) => {
           paymentMethod,
           amountPaid: effectivePaidAmount,
           deliveryFee: deliveryAmount,
+          directDiscount: directDiscountAmount,
+          directDiscountReason: directDiscountAmount > 0 ? directDiscountReason.trim() : undefined,
           pointsToRedeem: redeemablePoints,
           redeemPoints: redeemablePoints > 0,
           idempotencyKey: (window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`),
@@ -434,6 +450,8 @@ export const SalesInsights = ({ activeFilter }) => {
       setFulfillmentStatus('Delivered');
       setAmountPaid('');
       setDeliveryFee('');
+      setDirectDiscount('');
+      setDirectDiscountReason('');
       setPointsToRedeem('');
       setSelectedWarehouseId('');
       await Promise.all([refreshData(), fetchSales()]);
@@ -656,6 +674,38 @@ export const SalesInsights = ({ activeFilter }) => {
                 <strong>-{formatCurrency(discountAmount, settings)}</strong>
               </div>
             )}
+            {directDiscountAmount > 0 && (
+              <div className={`change-box ${hasDirectDiscountIssue ? 'change-box-error' : ''}`}>
+                <span>Desconto directo</span>
+                <strong>-{formatCurrency(directDiscountAmount, settings)}</strong>
+                <small>Justificacao guardada apenas para relatorios internos.</small>
+              </div>
+            )}
+
+            <div className="payment-grid">
+              <div className="form-group">
+                <label className="form-label">Desconto directo</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="form-input"
+                  value={directDiscount}
+                  onChange={(event) => setDirectDiscount(event.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Justificacao interna</label>
+                <input
+                  className="form-input"
+                  value={directDiscountReason}
+                  onChange={(event) => setDirectDiscountReason(event.target.value)}
+                  placeholder="Ex: autorizado pelo manager"
+                  disabled={directDiscountInput <= 0}
+                />
+              </div>
+            </div>
 
             <div className="payment-grid">
               <div className="form-group">
@@ -715,7 +765,7 @@ export const SalesInsights = ({ activeFilter }) => {
             <div className="change-box">
               <span>Before confirmation</span>
               <strong>{formatCurrency(payableTotal, settings)} to pay</strong>
-              <small>Products: {formatCurrency(totals.revenue, settings)} | Discount: {formatCurrency(discountAmount, settings)} | Points: {redeemablePoints} ({formatCurrency(pointsValue, settings)}) | Delivery: {formatCurrency(deliveryAmount, settings)}</small>
+              <small>Products: {formatCurrency(totals.revenue, settings)} | Loyalty discount: {formatCurrency(discountAmount, settings)} | Direct discount: {formatCurrency(directDiscountAmount, settings)} | Points: {redeemablePoints} ({formatCurrency(pointsValue, settings)}) | Delivery: {formatCurrency(deliveryAmount, settings)}</small>
             </div>
 
             <div className={`change-box ${hasPaymentIssue ? 'change-box-error' : ''}`}>
@@ -723,7 +773,7 @@ export const SalesInsights = ({ activeFilter }) => {
               <strong>{formatCurrency(hasPaymentIssue ? saleRevenue - paidAmount : changeGiven, settings)}</strong>
             </div>
 
-            <button className="btn btn-primary pos-submit" type="submit" disabled={submitting || cart.length === 0 || hasStockIssue || hasPaymentIssue || hasPointsIssue}>
+            <button className="btn btn-primary pos-submit" type="submit" disabled={submitting || cart.length === 0 || hasStockIssue || hasPaymentIssue || hasPointsIssue || hasDirectDiscountIssue}>
               {submitting ? t.processingSale : t.completeSale}
             </button>
           </form>
@@ -750,6 +800,7 @@ export const SalesInsights = ({ activeFilter }) => {
                 <th>Channel</th>
                 <th>Status</th>
                 <th>Commission</th>
+                <th>Desconto directo</th>
                 <th>Warehouse</th>
                 <th>{t.paymentMethod}</th>
                 <th>COGS</th>
@@ -759,7 +810,7 @@ export const SalesInsights = ({ activeFilter }) => {
             </thead>
             <tbody>
               {displayedSales.length === 0 ? (
-                <tr><td colSpan="13" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-charcoal-light)' }}>No sales logged yet.</td></tr>
+                <tr><td colSpan="14" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-charcoal-light)' }}>No sales logged yet.</td></tr>
               ) : (
                 displayedSales.map((sale) => {
                   const saleDate = new Date(sale.date);
@@ -775,6 +826,10 @@ export const SalesInsights = ({ activeFilter }) => {
                       <td>{sale.channel || 'Store'}{sale.orderReference ? <span className="table-muted">{sale.orderReference}</span> : null}</td>
                       <td>{sale.fulfillmentStatus || 'Delivered'}</td>
                       <td>{sale.commissionAmount ? formatCurrency(sale.commissionAmount, settings) : '-'}</td>
+                      <td>
+                        {directDiscountValue(sale) > 0 ? formatCurrency(directDiscountValue(sale), settings) : '-'}
+                        {sale.directDiscountReason ? <span className="table-muted">{sale.directDiscountReason}</span> : null}
+                      </td>
                       <td>{sale.warehouseName || sale.warehouse?.name || '-'}</td>
                       <td>{sale.paymentMethod || 'Cash'}</td>
                       <td>{formatCurrency(sale.totalCogs, settings)}</td>
@@ -811,6 +866,12 @@ export const SalesInsights = ({ activeFilter }) => {
                   <strong>{formatCurrency(line.total, settings)}</strong>
                 </div>
               ))}
+              {directDiscountValue(lastReceipt) > 0 && (
+                <div className="receipt-line">
+                  <span>Desconto</span>
+                  <strong>-{formatCurrency(directDiscountValue(lastReceipt), settings)}</strong>
+                </div>
+              )}
               <div className="receipt-total"><span>Total</span><strong>{formatCurrency(lastReceipt.totalRevenue, settings)}</strong></div>
               <div className="receipt-line"><span>{t.paymentMethod}: {lastReceipt.paymentMethod}</span><strong>{formatCurrency(lastReceipt.amountPaid, settings)}</strong></div>
               <div className="receipt-line"><span>{t.change}</span><strong>{formatCurrency(lastReceipt.changeGiven, settings)}</strong></div>
