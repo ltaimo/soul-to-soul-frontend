@@ -221,6 +221,14 @@ a {
   font-size: 0.9rem;
 }
 
+.btn:disabled,
+.product-pick-row:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .btn-primary {
   background-color: var(--color-primary);
   color: #FFF;
@@ -1158,6 +1166,12 @@ tr:hover {
   color: var(--color-danger);
   background: rgba(217, 83, 79, 0.12);
   border: 1px solid rgba(217, 83, 79, 0.2);
+}
+
+.inline-alert-warning {
+  color: #8a5a00;
+  background: rgba(244, 183, 64, 0.12);
+  border: 1px solid rgba(244, 183, 64, 0.25);
 }
 
 .btn-danger {
@@ -2214,41 +2228,10 @@ tr:hover {
   font: inherit;
 }
 
-.product-select-panel,
+.product-search-results,
 .cart-lines {
   display: grid;
   gap: 0.65rem;
-}
-
-.product-select-panel .btn {
-  width: 100%;
-}
-
-.product-selection-summary {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1rem;
-  align-items: center;
-  padding: 0.85rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg);
-}
-
-.product-selection-summary strong {
-  display: block;
-  color: var(--color-charcoal);
-}
-
-.product-selection-summary span {
-  display: block;
-  color: var(--color-charcoal-light);
-  font-size: 0.78rem;
-  margin-top: 0.2rem;
-}
-
-.product-selection-summary > div:last-child {
-  text-align: right;
 }
 
 .product-pick-row {
@@ -2264,7 +2247,7 @@ tr:hover {
   text-align: left;
 }
 
-.product-pick-row:hover {
+.product-pick-row:hover:not(:disabled) {
   border-color: rgba(85, 97, 15, 0.35);
   background: var(--color-cream);
 }
@@ -2286,6 +2269,20 @@ tr:hover {
 
 .product-pick-row > div:last-child {
   text-align: right;
+}
+
+.product-search-hint,
+.product-search-empty {
+  font-size: 0.85rem;
+}
+
+.product-search-hint {
+  color: var(--color-charcoal-light);
+  padding: 0.75rem 0.2rem 0;
+}
+
+.product-search-empty {
+  padding: 1rem;
 }
 
 .stock-good {
@@ -4495,14 +4492,8 @@ tr:hover {
     gap: 0.5rem;
   }
 
-  .product-pick-row > div:last-child,
-  .product-selection-summary > div:last-child {
+  .product-pick-row > div:last-child {
     text-align: left;
-  }
-
-  .product-selection-summary {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
   }
 
   .cart-line {

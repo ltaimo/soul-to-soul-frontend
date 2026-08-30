@@ -27,7 +27,6 @@ export const SalesInsights = ({ activeFilter }) => {
   const { language, t } = useContext(LanguageContext);
   const [salesRecord, setSalesRecord] = useState([]);
   const [productSearch, setProductSearch] = useState('');
-  const [selectedProductId, setSelectedProductId] = useState('');
   const [cart, setCart] = useState([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [customerCodeSearch, setCustomerCodeSearch] = useState('');
@@ -49,6 +48,7 @@ export const SalesInsights = ({ activeFilter }) => {
   const [lastReceipt, setLastReceipt] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [historyErrorMsg, setHistoryErrorMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const activeWarehouses = warehouses.filter((warehouse) => warehouse.status !== 'Inactive');
   const defaultWarehouseId = activeWarehouses.find((warehouse) => warehouse.isDefault)?.id || activeWarehouses[0]?.id || '';
@@ -71,9 +71,13 @@ export const SalesInsights = ({ activeFilter }) => {
   const fetchSales = useCallback(async () => {
     try {
       const res = await fetchWithAuth(`${API_BASE}/api/sales`);
+      if (!res.ok) {
+        throw new Error('Nao foi possivel carregar o historico de vendas.');
+      }
       setSalesRecord(await res.json());
+      setHistoryErrorMsg('');
     } catch (e) {
-      setErrorMsg(e.message || 'Could not load sales history.');
+      setHistoryErrorMsg(e.message || 'Nao foi possivel carregar o historico de vendas.');
     }
   }, [fetchWithAuth]);
 
@@ -98,11 +102,6 @@ export const SalesInsights = ({ activeFilter }) => {
     return row?.quantity ?? 0;
   }, [fulfillmentWarehouseId, warehouseStock]);
 
-  const productOptionLabel = useCallback((product) => {
-    if (!product) return '';
-    return `${product.sku || `#${product.id}`} - ${product.name}`;
-  }, []);
-
   const matchingProducts = useMemo(() => {
     const term = productSearch.trim().toLowerCase();
     if (!term) return [];
@@ -121,10 +120,8 @@ export const SalesInsights = ({ activeFilter }) => {
           .toLowerCase()
           .includes(term)
       )
-      .slice(0, 20);
+      .slice(0, 8);
   }, [productSearch, saleableProducts]);
-
-  const selectedProduct = saleableProducts.find((product) => product.id === Number(selectedProductId));
 
   const cartLines = useMemo(() => {
     return cart.map((line) => {
@@ -247,27 +244,6 @@ export const SalesInsights = ({ activeFilter }) => {
       return [...current, { productId: product.id, quantity: 1 }];
     });
     setProductSearch('');
-    setSelectedProductId('');
-  };
-
-  const handleProductSearchChange = (value) => {
-    setProductSearch(value);
-    const selected = saleableProducts.find((product) => productOptionLabel(product) === value);
-    setSelectedProductId(selected ? String(selected.id) : '');
-  };
-
-  const addSelectedProduct = () => {
-    const product =
-      selectedProduct ||
-      matchingProducts[0] ||
-      saleableProducts.find((item) => productOptionLabel(item).toLowerCase() === productSearch.trim().toLowerCase());
-
-    if (!product) {
-      setErrorMsg('Pesquise e selecione um produto para adicionar.');
-      return;
-    }
-
-    addToCart(product);
   };
 
   const updateQty = (productId, quantity) => {
@@ -470,7 +446,15 @@ export const SalesInsights = ({ activeFilter }) => {
         }),
       });
 
-      const data = await response.json();
+      const rawResponse = await response.text();
+      let data = {};
+      if (rawResponse) {
+        try {
+          data = JSON.parse(rawResponse);
+        } catch {
+          data = { message: rawResponse };
+        }
+      }
       if (!response.ok || !data.success) {
         throw new Error(data.message || 'Failed to process sale.');
       }
@@ -541,53 +525,45 @@ export const SalesInsights = ({ activeFilter }) => {
             <Search size={18} />
             <input
               value={productSearch}
-              onChange={(event) => handleProductSearchChange(event.target.value)}
+              onChange={(event) => setProductSearch(event.target.value)}
               placeholder="Pesquisar produto por nome, SKU ou codigo"
-              list="sale-product-options"
             />
-            <datalist id="sale-product-options">
-              {matchingProducts.map((product) => (
-                <option key={product.id} value={productOptionLabel(product)} />
-              ))}
-            </datalist>
           </div>
-          <div className="product-select-panel">
-            <select
-              className="form-input"
-              value={selectedProductId}
-              onChange={(event) => {
-                const product = saleableProducts.find((item) => item.id === Number(event.target.value));
-                setSelectedProductId(event.target.value);
-                setProductSearch(product ? productOptionLabel(product) : productSearch);
-              }}
-            >
-              <option value="">
-                {productSearch.trim() ? `${matchingProducts.length} produto(s) encontrados` : 'Pesquise para selecionar produto'}
-              </option>
-              {matchingProducts.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {productOptionLabel(product)} | {formatCurrency(product.sellingPrice, settings)} | Stock {availableInWarehouse(product.id)}
-                </option>
-              ))}
-            </select>
-            {selectedProduct && (
-              <div className="product-selection-summary">
-                <div>
-                  <strong>{selectedProduct.name}</strong>
-                  <span>{selectedProduct.sku} - {selectedProduct.category}</span>
-                </div>
-                <div>
-                  <strong>{formatCurrency(selectedProduct.sellingPrice, settings)}</strong>
-                  <span className={availableInWarehouse(selectedProduct.id) <= 0 ? 'stock-bad' : 'stock-good'}>
-                    {availableInWarehouse(selectedProduct.id)} no armazem selecionado
-                  </span>
-                </div>
-              </div>
-            )}
-            <button type="button" className="btn btn-primary" onClick={addSelectedProduct} disabled={!productSearch.trim() && !selectedProduct}>
-              <Plus size={18} /> Adicionar produto
-            </button>
-          </div>
+          {productSearch.trim() ? (
+            <div className="product-search-results">
+              {matchingProducts.length > 0 ? (
+                matchingProducts.map((product) => {
+                  const available = availableInWarehouse(product.id);
+                  return (
+                    <button
+                      type="button"
+                      className="product-pick-row"
+                      key={product.id}
+                      onClick={() => addToCart(product)}
+                      disabled={available <= 0}
+                    >
+                      <div>
+                        <strong>{product.name}</strong>
+                        <span>{product.sku || `#${product.id}`} - {product.category || 'Sem categoria'}</span>
+                      </div>
+                      <div>
+                        <strong>{formatCurrency(product.sellingPrice, settings)}</strong>
+                        <span className={available <= 0 ? 'stock-bad' : 'stock-good'}>
+                          Stock {available}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="empty-cart product-search-empty">Nenhum produto encontrado.</div>
+              )}
+            </div>
+          ) : (
+            <div className="product-search-hint">
+              Clique no campo acima e pesquise por nome, SKU ou codigo.
+            </div>
+          )}
         </section>
 
         <section className="card pos-cart">
@@ -860,6 +836,7 @@ export const SalesInsights = ({ activeFilter }) => {
           </div>
           <span>{displayedSales.length} {t.records}</span>
         </div>
+        {historyErrorMsg && <div className="inline-alert inline-alert-warning"><AlertTriangle size={18} /> {historyErrorMsg}</div>}
         <div className="table-container">
           <table>
             <thead>
