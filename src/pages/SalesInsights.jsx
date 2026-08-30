@@ -26,7 +26,8 @@ export const SalesInsights = ({ activeFilter }) => {
   const { token, logout, user } = useContext(AuthContext);
   const { language, t } = useContext(LanguageContext);
   const [salesRecord, setSalesRecord] = useState([]);
-  const [query, setQuery] = useState('');
+  const [productSearch, setProductSearch] = useState('');
+  const [selectedProductId, setSelectedProductId] = useState('');
   const [cart, setCart] = useState([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [customerCodeSearch, setCustomerCodeSearch] = useState('');
@@ -97,16 +98,33 @@ export const SalesInsights = ({ activeFilter }) => {
     return row?.quantity ?? 0;
   }, [fulfillmentWarehouseId, warehouseStock]);
 
-  const filteredProducts = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    const source = term
-      ? saleableProducts.filter((product) =>
-          `${product.sku} ${product.name} ${product.category}`.toLowerCase().includes(term)
-        )
-      : saleableProducts;
+  const productOptionLabel = useCallback((product) => {
+    if (!product) return '';
+    return `${product.sku || `#${product.id}`} - ${product.name}`;
+  }, []);
 
-    return source.slice(0, 12);
-  }, [query, saleableProducts]);
+  const matchingProducts = useMemo(() => {
+    const term = productSearch.trim().toLowerCase();
+    if (!term) return [];
+
+    return saleableProducts
+      .filter((product) =>
+        [
+          product.sku,
+          product.name,
+          product.category,
+          product.barcode,
+          product.unit,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(term)
+      )
+      .slice(0, 20);
+  }, [productSearch, saleableProducts]);
+
+  const selectedProduct = saleableProducts.find((product) => product.id === Number(selectedProductId));
 
   const cartLines = useMemo(() => {
     return cart.map((line) => {
@@ -228,6 +246,28 @@ export const SalesInsights = ({ activeFilter }) => {
       }
       return [...current, { productId: product.id, quantity: 1 }];
     });
+    setProductSearch('');
+    setSelectedProductId('');
+  };
+
+  const handleProductSearchChange = (value) => {
+    setProductSearch(value);
+    const selected = saleableProducts.find((product) => productOptionLabel(product) === value);
+    setSelectedProductId(selected ? String(selected.id) : '');
+  };
+
+  const addSelectedProduct = () => {
+    const product =
+      selectedProduct ||
+      matchingProducts[0] ||
+      saleableProducts.find((item) => productOptionLabel(item).toLowerCase() === productSearch.trim().toLowerCase());
+
+    if (!product) {
+      setErrorMsg('Pesquise e selecione um produto para adicionar.');
+      return;
+    }
+
+    addToCart(product);
   };
 
   const updateQty = (productId, quantity) => {
@@ -499,22 +539,54 @@ export const SalesInsights = ({ activeFilter }) => {
           </div>
           <div className="search-input">
             <Search size={18} />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.searchProducts} />
+            <input
+              value={productSearch}
+              onChange={(event) => handleProductSearchChange(event.target.value)}
+              placeholder="Pesquisar produto por nome, SKU ou codigo"
+              list="sale-product-options"
+            />
+            <datalist id="sale-product-options">
+              {matchingProducts.map((product) => (
+                <option key={product.id} value={productOptionLabel(product)} />
+              ))}
+            </datalist>
           </div>
-
-          <div className="product-pick-list">
-            {filteredProducts.map((product) => (
-              <button type="button" key={product.id} className="product-pick-row" onClick={() => addToCart(product)}>
+          <div className="product-select-panel">
+            <select
+              className="form-input"
+              value={selectedProductId}
+              onChange={(event) => {
+                const product = saleableProducts.find((item) => item.id === Number(event.target.value));
+                setSelectedProductId(event.target.value);
+                setProductSearch(product ? productOptionLabel(product) : productSearch);
+              }}
+            >
+              <option value="">
+                {productSearch.trim() ? `${matchingProducts.length} produto(s) encontrados` : 'Pesquise para selecionar produto'}
+              </option>
+              {matchingProducts.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {productOptionLabel(product)} | {formatCurrency(product.sellingPrice, settings)} | Stock {availableInWarehouse(product.id)}
+                </option>
+              ))}
+            </select>
+            {selectedProduct && (
+              <div className="product-selection-summary">
                 <div>
-                  <strong>{product.name}</strong>
-                  <span>{product.sku} - {product.category}</span>
+                  <strong>{selectedProduct.name}</strong>
+                  <span>{selectedProduct.sku} - {selectedProduct.category}</span>
                 </div>
                 <div>
-                  <strong>{formatCurrency(product.sellingPrice, settings)}</strong>
-                  <span className={availableInWarehouse(product.id) <= 0 ? 'stock-bad' : 'stock-good'}>{availableInWarehouse(product.id)} in selected warehouse</span>
+                  <strong>{formatCurrency(selectedProduct.sellingPrice, settings)}</strong>
+                  <span className={availableInWarehouse(selectedProduct.id) <= 0 ? 'stock-bad' : 'stock-good'}>
+                    {availableInWarehouse(selectedProduct.id)} no armazem selecionado
+                  </span>
                 </div>
-              </button>
-            ))}
+              </div>
+            )}
+            <button type="button" className="btn btn-primary" onClick={addSelectedProduct} disabled={!productSearch.trim() && !selectedProduct}>
+              <Plus size={18} /> Adicionar produto
+            </button>
           </div>
         </section>
 
